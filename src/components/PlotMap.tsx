@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Edit3, Save, Download, Trash, Trees, Plus, X, Road } from 'lucide-react';
+import { ZoomIn, ZoomOut, Edit3, Save, Download, Trash, Trees, Plus, X, Road, MousePointerSquareDashed } from 'lucide-react';
 import initialGridData from '../data/layoutMatrix.json';
 
 type MapItem = {
@@ -26,14 +26,23 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
   // Editor State
   const [items, setItems] = useState<MapItem[]>(initialGridData as MapItem[]);
   const [editMode, setEditMode] = useState(false);
-  const [editingItem, setEditingItem] = useState<MapItem | null>(null);
-  const [originalId, setOriginalId] = useState<string | null>(null);
+  
+  // Multi-select State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showEditor, setShowEditor] = useState(false);
+  const [bulkConfig, setBulkConfig] = useState({
+    prefix: '',
+    startNumber: 101,
+    type: 'plot',
+    w: 1,
+    h: 1,
+    color: ''
+  });
+
   const [hoveredItem, setHoveredItem] = useState<MapItem | null>(null);
 
-  // Helper to determine road size based on grid dimensions
   const getRoadInfo = (item: MapItem) => {
     if (item.type !== 'road') return null;
-    // Roads with h >= 12 or w >= 2 are likely Main Streets (40ft)
     const isMainRoad = item.h >= 12 || item.w >= 2; 
     return {
       name: item.label || (isMainRoad ? "MAIN STREET" : "INTERNAL ROAD"),
@@ -41,7 +50,6 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
     };
   };
 
-  // Sync state when JSON file changes via hot-reload
   useEffect(() => {
     setItems(initialGridData as MapItem[]);
   }, [initialGridData]);
@@ -62,8 +70,13 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
 
   const handleItemClick = (item: MapItem) => {
     if (editMode) {
-      setOriginalId(item.id);
-      setEditingItem({...item});
+      setSelectedIds(prev => {
+        if (prev.includes(item.id)) {
+          return prev.filter(id => id !== item.id);
+        } else {
+          return [...prev, item.id];
+        }
+      });
     } else {
       if (item.type === 'plot') {
         setSelectedPlot(item.id);
@@ -74,56 +87,100 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
 
   const handleEmptyClick = (x: number, y: number) => {
     if (editMode) {
-      const newId = `new-${Date.now()}`;
-      setOriginalId(newId);
-      setEditingItem({
+      const newId = `new-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const newItem: MapItem = {
         id: newId,
         type: 'plot',
         x, y, w: 1, h: 1,
         color: '',
         label: ''
+      };
+      setItems(prev => [...prev, newItem]);
+      setSelectedIds(prev => [...prev, newId]);
+    }
+  };
+
+  const openEditor = () => {
+    if (selectedIds.length === 1) {
+      const item = items.find(i => i.id === selectedIds[0]);
+      if (item) {
+        setBulkConfig({
+          prefix: item.id,
+          startNumber: 101,
+          type: item.type,
+          w: item.w,
+          h: item.h,
+          color: item.color || ''
+        });
+      }
+    } else if (selectedIds.length > 1) {
+      const firstItem = items.find(i => i.id === selectedIds[0]);
+      setBulkConfig({
+        prefix: 'A-',
+        startNumber: 101,
+        type: firstItem?.type || 'plot',
+        w: firstItem?.w || 1,
+        h: firstItem?.h || 1,
+        color: firstItem?.color || ''
       });
     }
+    setShowEditor(true);
   };
 
-  const saveEditedItem = () => {
-    if (!editingItem) return;
+  const saveEditedItems = () => {
+    if (selectedIds.length === 0) return;
 
-    const cleanId = editingItem.id.trim();
-    if (!cleanId) {
-      alert("Error: ID cannot be empty.");
-      return;
+    if (selectedIds.length === 1) {
+      const cleanId = bulkConfig.prefix.trim();
+      if (!cleanId) {
+        alert("Error: ID cannot be empty.");
+        return;
+      }
+      const isDuplicate = items.some(i => i.id === cleanId && i.id !== selectedIds[0]);
+      if (isDuplicate) {
+        alert(`Error: The ID "${cleanId}" is already used.`);
+        return;
+      }
     }
-
-    // Check for duplicates across ALL items (Plots, Parks, Roads)
-    const isDuplicate = items.some(i => i.id === cleanId && i.id !== originalId);
-    if (isDuplicate) {
-      alert(`Error: The ID "${cleanId}" is already being used by another item (Plot, Park, or Road). Every item on the map MUST have a unique ID.`);
-      return;
-    }
-
-    const finalItem = { ...editingItem, id: cleanId };
 
     setItems(prev => {
-      // If we changed the ID, we need to remove the old one
-      let filtered = prev;
-      if (originalId && originalId !== cleanId) {
-        filtered = prev.filter(i => i.id !== originalId);
-      }
+      const newItems = [...prev];
+      selectedIds.forEach((id, index) => {
+        const idx = newItems.findIndex(i => i.id === id);
+        if (idx !== -1) {
+          const item = { ...newItems[idx] };
+          item.type = bulkConfig.type as any;
+          item.w = bulkConfig.w;
+          item.h = bulkConfig.h;
+          
+          if (item.type === 'plot') {
+            item.color = bulkConfig.color;
+          } else {
+            item.color = '';
+          }
 
-      const exists = filtered.find(i => i.id === cleanId);
-      if (exists) return filtered.map(i => i.id === cleanId ? finalItem : i);
-      return [...filtered, finalItem];
+          if (selectedIds.length === 1) {
+            item.id = bulkConfig.prefix.trim();
+          } else {
+            item.id = `${bulkConfig.prefix}${bulkConfig.startNumber + index}`;
+          }
+          
+          item.label = item.id.includes('-') ? item.id.split('-')[1] : item.id;
+          
+          newItems[idx] = item;
+        }
+      });
+      return newItems;
     });
-    
-    setEditingItem(null);
-    setOriginalId(null);
+
+    setSelectedIds([]);
+    setShowEditor(false);
   };
 
-  const deleteEditedItem = () => {
-    if (!editingItem) return;
-    setItems(prev => prev.filter(i => i.id !== editingItem.id));
-    setEditingItem(null);
+  const deleteSelectedItems = () => {
+    setItems(prev => prev.filter(i => !selectedIds.includes(i.id)));
+    setSelectedIds([]);
+    setShowEditor(false);
   };
 
   const exportJSON = () => {
@@ -145,7 +202,6 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
     setIsDragging(false);
   };
 
-  // Generate 40x79 background grid cells to allow clicking empty spaces
   const backgroundCells = useMemo(() => {
     const cells = [];
     for(let y = 0; y < 79; y++) {
@@ -168,7 +224,13 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
             <Edit3 className="w-4 h-4" /> Map Builder
           </h3>
           <button 
-            onClick={() => setEditMode(!editMode)}
+            onClick={() => {
+              setEditMode(!editMode);
+              if (!editMode === false) {
+                setSelectedIds([]);
+                setShowEditor(false);
+              }
+            }}
             className={`w-full py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${
               editMode ? 'bg-blue-600 text-white shadow-md' : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
             }`}
@@ -177,12 +239,27 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
           </button>
           
           {editMode && (
-            <button 
-              onClick={exportJSON}
-              className="w-full mt-3 py-3 rounded-lg font-bold text-sm bg-neutral-800 text-white flex items-center justify-center gap-2 hover:bg-black transition-all shadow-md"
-            >
-              <Download className="w-4 h-4" /> Export Map JSON
-            </button>
+            <>
+              {selectedIds.length > 0 && (
+                <button 
+                  onClick={openEditor}
+                  className="w-full mt-3 py-3 rounded-lg font-bold text-sm bg-blue-600 text-white flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md animate-in fade-in"
+                >
+                  <MousePointerSquareDashed className="w-4 h-4" /> Edit {selectedIds.length} Selected
+                </button>
+              )}
+              
+              <button 
+                onClick={exportJSON}
+                className="w-full mt-3 py-3 rounded-lg font-bold text-sm bg-neutral-800 text-white flex items-center justify-center gap-2 hover:bg-black transition-all shadow-md"
+              >
+                <Download className="w-4 h-4" /> Export Map JSON
+              </button>
+              
+              <div className="mt-4 text-xs text-neutral-500 font-medium leading-relaxed bg-neutral-100 p-3 rounded-lg border border-neutral-200">
+                <strong>Tip:</strong> Click multiple items to select them sequentially. Clicking empty spaces creates new plots instantly. Click "Edit Selected" to bulk update IDs incrementally (e.g. A-101, A-102).
+              </div>
+            </>
           )}
         </div>
 
@@ -234,7 +311,6 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
       >
         {/* MAP OVERLAYS (Compass) */}
         <div className="absolute top-6 left-6 z-40 pointer-events-none space-y-4">
-          {/* Compass */}
           <div className="bg-white/90 backdrop-blur p-3 rounded-2xl shadow-xl border border-white/20 flex flex-col items-center">
             <svg width="60" height="60" viewBox="0 0 100 100" className="drop-shadow-sm">
               <circle cx="50" cy="50" r="48" fill="none" stroke="#ccc" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -242,7 +318,6 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
               <text x="50" y="96" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">S</text>
               <text x="94" y="55" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">E</text>
               <text x="6" y="55" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">W</text>
-              {/* Needle */}
               <path d="M50 20 L58 50 L50 80 L42 50 Z" fill="#ef4444" />
               <path d="M20 50 L50 42 L80 50 L50 58 Z" fill="#333" />
               <circle cx="50" cy="50" r="5" fill="white" stroke="#ef4444" strokeWidth="2" />
@@ -285,7 +360,6 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
             width: 'max-content'
           }}
         >
-          {/* 1. Render Background Clickable Cells (for adding new items) */}
           {editMode && backgroundCells.map(cell => (
              <div 
                key={`bg-${cell.x}-${cell.y}`}
@@ -297,9 +371,8 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
              />
           ))}
 
-          {/* 2. Render Actual Items */}
           {items.map((item) => {
-             const isSelected = selectedPlot === item.id || editingItem?.id === item.id;
+             const isSelected = (!editMode && selectedPlot === item.id) || (editMode && selectedIds.includes(item.id));
              
              let bgClass = '';
              let borderClass = 'border-[0.5px] border-black/10 text-white';
@@ -316,13 +389,14 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
                 bgClass = getPlotColor(item.id);
              }
 
+             const selectionIndex = editMode ? selectedIds.indexOf(item.id) : -1;
+
              return (
                 <button
                   key={item.id}
                   onMouseEnter={() => setHoveredItem(item)}
                   onMouseLeave={() => setHoveredItem(null)}
                   onMouseUp={(e) => {
-                    // Only trigger click if we aren't dragging significantly
                     if (!isDragging || (Math.abs(e.movementX) < 2 && Math.abs(e.movementY) < 2)) {
                       handleItemClick(item);
                     }
@@ -334,7 +408,7 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
                     backgroundColor: item.type === 'plot' && item.color ? item.color : undefined,
                     zIndex: isSelected ? 30 : (item.type === 'road' ? 5 : 10)
                   }}
-                  className={`flex items-center justify-center text-[8.5px] font-bold transition-all
+                  className={`flex items-center justify-center text-[8.5px] font-bold transition-all relative overflow-hidden
                     ${bgClass} ${borderClass}
                     ${isSelected ? 'ring-2 ring-yellow-400 brightness-110 scale-[1.15] shadow-xl z-30' : 'hover:brightness-110'}
                     ${item.type === 'road' ? 'hover:scale-[1.01] hover:brightness-125 z-10' : ''}
@@ -342,6 +416,12 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
                   `}
                 >
                    {typeof content === 'string' ? <span className="truncate px-0.5">{content}</span> : content}
+                   
+                   {editMode && selectionIndex !== -1 && selectedIds.length > 1 && (
+                     <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[6px] font-black w-3 h-3 flex items-center justify-center rounded-bl-sm shadow-sm">
+                       {selectionIndex + 1}
+                     </div>
+                   )}
                 </button>
              );
           })}
@@ -349,21 +429,41 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
       </div>
 
       {/* Editor Modal Overlay */}
-      {editingItem && (
+      {showEditor && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95">
               <div className="bg-neutral-100 p-4 border-b border-neutral-200 flex items-center justify-between">
-                 <h3 className="font-bold text-lg text-neutral-800">Edit Grid Item</h3>
-                 <button onClick={() => setEditingItem(null)} className="text-neutral-500 hover:text-black"><X className="w-5 h-5"/></button>
+                 <h3 className="font-bold text-lg text-neutral-800">
+                   {selectedIds.length > 1 ? `Edit ${selectedIds.length} Items` : 'Edit Grid Item'}
+                 </h3>
+                 <button onClick={() => setShowEditor(false)} className="text-neutral-500 hover:text-black"><X className="w-5 h-5"/></button>
               </div>
               <div className="p-6 space-y-4">
-                 <div>
-                    <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">ID (Unique)</label>
-                    <input type="text" value={editingItem.id} onChange={e => setEditingItem({...editingItem, id: e.target.value})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
-                 </div>
+                 
+                 {selectedIds.length === 1 ? (
+                   <div>
+                      <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">ID (Unique)</label>
+                      <input type="text" value={bulkConfig.prefix} onChange={e => setBulkConfig({...bulkConfig, prefix: e.target.value})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                   </div>
+                 ) : (
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">ID Prefix</label>
+                         <input type="text" placeholder="e.g. A-" value={bulkConfig.prefix} onChange={e => setBulkConfig({...bulkConfig, prefix: e.target.value})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                      </div>
+                      <div>
+                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Start Number</label>
+                         <input type="number" value={bulkConfig.startNumber} onChange={e => setBulkConfig({...bulkConfig, startNumber: parseInt(e.target.value) || 0})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                      </div>
+                      <div className="col-span-2 text-xs text-neutral-500 bg-blue-50 p-2 rounded border border-blue-100 text-blue-700">
+                         <strong>Preview:</strong> {bulkConfig.prefix}{bulkConfig.startNumber}, {bulkConfig.prefix}{bulkConfig.startNumber + 1}, ...
+                      </div>
+                   </div>
+                 )}
+
                  <div>
                     <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Type</label>
-                    <select value={editingItem.type} onChange={e => setEditingItem({...editingItem, type: e.target.value as any})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none">
+                    <select value={bulkConfig.type} onChange={e => setBulkConfig({...bulkConfig, type: e.target.value as any})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none">
                        <option value="plot">Plot</option>
                        <option value="road">Road</option>
                        <option value="park">Park</option>
@@ -372,28 +472,28 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
                  <div className="grid grid-cols-2 gap-4">
                    <div>
                        <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Width (Cells)</label>
-                       <input type="number" min="1" max="40" value={editingItem.w} onChange={e => setEditingItem({...editingItem, w: parseInt(e.target.value) || 1})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                       <input type="number" min="1" max="40" value={bulkConfig.w} onChange={e => setBulkConfig({...bulkConfig, w: parseInt(e.target.value) || 1})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
                    </div>
                    <div>
                        <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Height (Cells)</label>
-                       <input type="number" min="1" max="79" value={editingItem.h} onChange={e => setEditingItem({...editingItem, h: parseInt(e.target.value) || 1})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                       <input type="number" min="1" max="79" value={bulkConfig.h} onChange={e => setBulkConfig({...bulkConfig, h: parseInt(e.target.value) || 1})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
                    </div>
                  </div>
-                 {editingItem.type === 'plot' && (
+                 {bulkConfig.type === 'plot' && (
                    <>
                      <div>
-                        <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Custom Background Color (Optional)</label>
+                        <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Custom Background Color</label>
                         <div className="flex gap-2">
-                           <input type="color" value={editingItem.color || '#006400'} onChange={e => setEditingItem({...editingItem, color: e.target.value})} className="w-10 h-10 rounded cursor-pointer border border-neutral-200 p-0"/>
-                           <input type="text" placeholder="Leave blank for default" value={editingItem.color || ''} onChange={e => setEditingItem({...editingItem, color: e.target.value})} className="flex-1 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                           <input type="color" value={bulkConfig.color || '#006400'} onChange={e => setBulkConfig({...bulkConfig, color: e.target.value})} className="w-10 h-10 rounded cursor-pointer border border-neutral-200 p-0"/>
+                           <input type="text" placeholder="Leave blank for default" value={bulkConfig.color || ''} onChange={e => setBulkConfig({...bulkConfig, color: e.target.value})} className="flex-1 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
                         </div>
                      </div>
                    </>
                  )}
               </div>
               <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-between gap-3">
-                 <button onClick={deleteEditedItem} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"><Trash className="w-4 h-4"/> Delete</button>
-                 <button onClick={saveEditedItem} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-md"><Save className="w-4 h-4"/> Save Item</button>
+                 <button onClick={deleteSelectedItems} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"><Trash className="w-4 h-4"/> Delete</button>
+                 <button onClick={saveEditedItems} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-md"><Save className="w-4 h-4"/> Save Items</button>
               </div>
            </div>
         </div>
