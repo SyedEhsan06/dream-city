@@ -371,7 +371,6 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
             </>
           )}
         </div> */}
-{/* 
         <div className="h-px bg-neutral-200"></div>
 
         <div>
@@ -411,7 +410,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
             </p>
         </div>
 
-        <div className="h-px bg-neutral-200"></div> */}
+        <div className="h-px bg-neutral-200"></div>
 
         {/* Plot Legend (SQFt Mapper) */}
         <div>
@@ -439,6 +438,11 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
       {/* Grid Canvas - Order 1 on mobile, Order 2 on desktop */}
       <div 
         className={`w-full flex-1 bg-[#2c3238] rounded-3xl overflow-hidden relative min-h-[500px] h-[60vh] md:h-[800px] border-[4px] md:border-[8px] border-[#1e2328] shadow-2xl select-none order-1 lg:order-2 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none`}
+        onWheel={(e) => {
+          if (isLocked) return;
+          if (e.deltaY < 0) setMapScale(s => Math.min(s + 0.1, 3));
+          else setMapScale(s => Math.max(s - 0.1, 0.3));
+        }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -573,7 +577,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95">
               <div className="bg-neutral-100 p-4 border-b border-neutral-200 flex items-center justify-between">
-                 <h3 className= "font-bold text-lg text-neutral-800">
+                 <h3 className="font-bold text-lg text-neutral-800">
                    {selectedIds.length > 1 ? `Edit ${selectedIds.length} Items` : 'Edit Grid Item'}
                  </h3>
                  <button onClick={() => setShowEditor(false)} className="text-neutral-500 hover:text-black"><X className="w-5 h-5"/></button>
