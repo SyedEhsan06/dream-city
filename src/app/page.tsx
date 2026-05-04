@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from 'react';
-import { MapPin, Phone, MessageCircle, Trees, Route as Road, Map, ShieldCheck, CheckCircle2, Navigation, X } from 'lucide-react';
+import { MapPin, Phone, MessageCircle, Trees, Route as Road, Map, ShieldCheck, CheckCircle2, Navigation, X, Droplets, Zap, Shield, Home as HomeIcon, ArrowRight } from 'lucide-react';
 import PlotMap from '../components/PlotMap';
 
 export default function Home() {
   const [formData, setFormData] = useState({ name: '', phone: '', plot_interest: '' });
   const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
   const [selectedPlot, setSelectedPlot] = useState<any>(null);
+  const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,7 +16,11 @@ export default function Home() {
     // Mock lead capture as requested - no backend for now
     setTimeout(() => {
       setFormStatus('success');
-      setFormData({ name: '', phone: '', plot_interest: '' });
+      setTimeout(() => {
+        setFormStatus('idle');
+        setIsEnquiryModalOpen(false);
+        setFormData({ name: '', phone: '', plot_interest: '' });
+      }, 2000);
       console.log("Mock lead captured:", formData);
     }, 800);
   };
@@ -27,16 +32,19 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-neutral-200">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="text-2xl font-bold text-emerald-900 tracking-tight">
-            Dream Park
+            Dream City Buildtech
           </div>
           <div className="hidden md:flex gap-6 items-center font-medium text-sm text-neutral-600">
             <a href="#plots" className="hover:text-emerald-700 transition">Available Plots</a>
             <a href="#highlights" className="hover:text-emerald-700 transition">Highlights</a>
             <a href="#location" className="hover:text-emerald-700 transition">Location</a>
           </div>
-          <a href="#contact" className="bg-emerald-700 text-white px-5 py-2 rounded-full font-medium hover:bg-emerald-800 transition">
+          <button 
+            onClick={() => setIsEnquiryModalOpen(true)}
+            className="bg-emerald-700 text-white px-5 py-2 rounded-full font-medium hover:bg-emerald-800 transition"
+          >
             Enquire Now
-          </a>
+          </button>
         </div>
       </header>
 
@@ -47,7 +55,7 @@ export default function Home() {
         
         <div className="relative max-w-4xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-800/50 border border-emerald-700 backdrop-blur-sm text-emerald-100 text-sm font-medium">
-            <MapPin className="w-4 h-4" /> Near R.L. International School, Bettiah
+            <MapPin className="w-4 h-4" /> Mansha Tola, Bettiah - Motihari Rd
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight">
             Own Your Dream Plot <br className="hidden md:block"/> in Bettiah
@@ -59,45 +67,42 @@ export default function Home() {
             <a href="#plots" className="bg-amber-500 text-emerald-950 px-8 py-4 rounded-full font-bold text-lg hover:bg-amber-400 transition shadow-lg shadow-amber-500/20">
               View Available Plots
             </a>
-            <a href="#contact" className="bg-white/10 backdrop-blur border border-white/20 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-white/20 transition">
+            <button 
+              onClick={() => setIsEnquiryModalOpen(true)}
+              className="bg-white/10 backdrop-blur border border-white/20 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-white/20 transition"
+            >
               Book Site Visit
-            </a>
+            </button>
           </div>
         </div>
       </section>
 
-      {/* PROJECT HIGHLIGHTS */}
+      {/* WORLD-CLASS AMENITIES */}
       <section id="highlights" className="py-24 px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">Project Highlights</h2>
-            <p className="text-neutral-600 max-w-2xl mx-auto">Everything you need for a comfortable and secure living environment.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">World-Class Amenities</h2>
+            <p className="text-neutral-600 max-w-2xl mx-auto text-lg">Designed to provide a secure, comfortable, and modern lifestyle for you and your family.</p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-2xl bg-neutral-50 border border-neutral-100 hover:shadow-lg transition">
-              <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center mb-6">
-                <Road className="w-7 h-7" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { icon: <Shield className="w-8 h-8" />, title: "24/7 Security", desc: "Gated community with CCTV" },
+              { icon: <Zap className="w-8 h-8" />, title: "Electricity", desc: "Underground cabling" },
+              { icon: <Droplets className="w-8 h-8" />, title: "Water Supply", desc: "24x7 water connection" },
+              { icon: <HomeIcon className="w-8 h-8" />, title: "Drainage", desc: "Modern sewage system" },
+              { icon: <Trees className="w-8 h-8" />, title: "Lush Parks", desc: "Landscaped green areas" },
+              { icon: <Road className="w-8 h-8" />, title: "Wide Roads", desc: "40ft & 25ft internal roads" },
+              { icon: <CheckCircle2 className="w-8 h-8" />, title: "Clear Title", desc: "100% verified documents" },
+              { icon: <Navigation className="w-8 h-8" />, title: "Connectivity", desc: "Right next to Highway" },
+            ].map((item, i) => (
+              <div key={i} className="bg-neutral-50 border border-neutral-100 p-8 rounded-3xl text-center hover:shadow-xl hover:-translate-y-1 transition duration-300">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-700 mb-6">
+                  {item.icon}
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-neutral-900">{item.title}</h3>
+                <p className="text-sm text-neutral-600 leading-relaxed">{item.desc}</p>
               </div>
-              <h3 className="text-xl font-bold mb-3">Wide Access Roads</h3>
-              <p className="text-neutral-600">25ft and 40ft wide internal roads ensuring smooth traffic flow and easy access to all plots.</p>
-            </div>
-            
-            <div className="p-8 rounded-2xl bg-neutral-50 border border-neutral-100 hover:shadow-lg transition">
-              <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center mb-6">
-                <Trees className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Planned Park Area</h3>
-              <p className="text-neutral-600">Dedicated green spaces and park areas within the layout for a healthy and active lifestyle.</p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-neutral-50 border border-neutral-100 hover:shadow-lg transition">
-              <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center mb-6">
-                <Navigation className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Excellent Connectivity</h3>
-              <p className="text-neutral-600">Strategically located near NH-727 and major city landmarks, making commuting effortless.</p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -141,12 +146,16 @@ export default function Home() {
               </div>
 
               <div>
-                <a href="#contact" onClick={() => {
-                  setFormData(prev => ({ ...prev, plot_interest: selectedPlot.id }));
-                  setSelectedPlot(null);
-                }} className="block w-full text-center bg-emerald-700 text-white py-4 rounded-xl font-bold hover:bg-emerald-800 transition shadow-lg shadow-emerald-700/20">
+                <button 
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, plot_interest: selectedPlot.id }));
+                    setIsEnquiryModalOpen(true);
+                    setSelectedPlot(null);
+                  }} 
+                  className="block w-full text-center bg-emerald-700 text-white py-4 rounded-xl font-bold hover:bg-emerald-800 transition shadow-lg shadow-emerald-700/20"
+                >
                   Enquire Now
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -175,9 +184,12 @@ export default function Home() {
                 <span className="text-lg">Clear titles and transparent documentation</span>
               </li>
             </ul>
-            <a href="#contact" className="inline-block bg-amber-500 text-emerald-950 px-8 py-4 rounded-full font-bold text-lg hover:bg-amber-400 transition">
+            <button 
+              onClick={() => setIsEnquiryModalOpen(true)}
+              className="inline-block bg-amber-500 text-emerald-950 px-8 py-4 rounded-full font-bold text-lg hover:bg-amber-400 transition"
+            >
               Get Detailed Pricing
-            </a>
+            </button>
           </div>
           
           <div className="bg-emerald-800/50 p-10 rounded-3xl border border-emerald-700/50 backdrop-blur-sm">
@@ -185,7 +197,7 @@ export default function Home() {
               <ShieldCheck className="w-8 h-8 text-amber-400" />
             </div>
             <h3 className="text-2xl font-bold mb-4">Developed By</h3>
-            <div className="text-xl font-black text-white mb-2">Dream Park Buildtech Pvt. Ltd.</div>
+            <div className="text-xl font-black text-white mb-2">Dream City Buildtech Pvt. Ltd.</div>
             <p className="text-emerald-200 mb-6 leading-relaxed">
               Committed to delivering high-quality plotted developments with verified legal status and modern infrastructure.
             </p>
@@ -193,6 +205,32 @@ export default function Home() {
               <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Verified Legal</span>
               <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Ready for Registration</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ SECTION */}
+      <section className="py-24 px-6 bg-white border-b border-neutral-200">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">Frequently Asked Questions</h2>
+            <p className="text-neutral-600 text-lg">Got questions? We've got answers.</p>
+          </div>
+          <div className="space-y-4">
+            {[
+              { q: "Is the project legally verified?", a: "Yes, Dream Park has 100% clear titles and all necessary approvals from the local authorities. You can review the papers anytime." },
+              { q: "Are bank loans available?", a: "Yes, we have tie-ups with leading nationalized and private banks to offer easy EMI and loan facilities for plots." },
+              { q: "When can I start construction?", a: "You can start construction immediately after the registry! The basic infrastructure like roads and plot marking is already in place." },
+              { q: "What is the booking amount?", a: "You can secure your plot with a nominal booking amount. Contact our sales team using the form below to get the exact payment schedule." }
+            ].map((faq, i) => (
+              <div key={i} className="p-6 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-emerald-200 transition">
+                <h4 className="text-lg font-bold text-neutral-900 mb-2 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm">Q</span>
+                  {faq.q}
+                </h4>
+                <p className="text-neutral-600 leading-relaxed ml-8">{faq.a}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -221,11 +259,11 @@ export default function Home() {
               </div>
             </div>
             
-            {/* Embedded Google Map using provided Lat Long */}
+            {/* Embedded Google Map using exact company location */}
             <div className="h-72 w-full bg-emerald-900 relative">
               <div className="absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-emerald-800 to-transparent z-10 pointer-events-none"></div>
               <iframe 
-                src="https://maps.google.com/maps?q=26.765572,84.581512&hl=en&z=15&output=embed" 
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3548.868725843477!2d84.5382552!3d26.8017159!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39936902445fbcbb%3A0x899229c0b9860ad2!2sDream%20City%20Buildtech%20Pvt.%20Ltd.!5e0!3m2!1sen!2sin!4v1714815456789!5m2!1sen!2sin" 
                 width="100%" 
                 height="100%" 
                 style={{ border: 0 }} 
@@ -301,11 +339,89 @@ export default function Home() {
       {/* FOOTER */}
       <footer className="bg-neutral-950 text-neutral-400 py-12 px-6 text-center border-t border-neutral-900">
         <div className="max-w-6xl mx-auto">
-          <div className="text-2xl font-bold text-white mb-4">Dream Park</div>
-          <p className="mb-8 max-w-md mx-auto">Premium plotted development by Dream Park Buildtech Pvt. Ltd.</p>
-          <div className="text-sm">&copy; {new Date().getFullYear()} Dream Park. All rights reserved.</div>
+          <div className="text-2xl font-bold text-white mb-4">Dream City Buildtech</div>
+          <p className="mb-8 max-w-md mx-auto leading-relaxed">
+            Mansha Tola, Murtuza Manzil, 2nd Floor, <br/>
+            Bettiah - Motihari Rd, Bihar 845438
+          </p>
+          <div className="text-sm">&copy; {new Date().getFullYear()} Dream City Buildtech Pvt. Ltd. All rights reserved.</div>
         </div>
       </footer>
+
+      {/* ENQUIRY POPUP MODAL */}
+      {isEnquiryModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden scale-100 transition-transform animate-in zoom-in-95 duration-300">
+            <div className="p-6 bg-emerald-800 text-white flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold">Enquire Now</h3>
+                <p className="text-emerald-200 text-xs">Share your details for a callback</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsEnquiryModalOpen(false);
+                  setFormStatus('idle');
+                }} 
+                className="p-2 hover:bg-white/10 rounded-full transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-8">
+              <form onSubmit={handleLeadSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-black text-neutral-400 mb-2 uppercase tracking-widest">Full Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    className="w-full px-5 py-4 rounded-xl bg-neutral-50 border border-neutral-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none transition font-bold text-neutral-800"
+                    placeholder="Enter your name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-neutral-400 mb-2 uppercase tracking-widest">Phone Number</label>
+                  <input 
+                    type="tel" 
+                    required
+                    value={formData.phone}
+                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                    className="w-full px-5 py-4 rounded-xl bg-neutral-50 border border-neutral-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none transition font-bold text-neutral-800"
+                    placeholder="Enter your 10-digit number"
+                  />
+                </div>
+                
+                {formData.plot_interest && (
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
+                      {formData.plot_interest.charAt(0)}
+                    </div>
+                    <div className="text-xs font-bold text-emerald-800">
+                      Interested in Plot <span className="text-sm ml-1 font-black underline">{formData.plot_interest}</span>
+                    </div>
+                  </div>
+                )}
+
+                <button 
+                  type="submit"
+                  disabled={formStatus === 'submitting'}
+                  className="w-full bg-emerald-700 text-white py-4 rounded-xl font-black text-lg hover:bg-emerald-800 transition disabled:opacity-70 shadow-lg shadow-emerald-700/20 mt-2"
+                >
+                  {formStatus === 'submitting' ? 'Sending...' : 'Request Callback'}
+                </button>
+                
+                {formStatus === 'success' && (
+                  <div className="p-4 bg-emerald-50 text-emerald-700 rounded-xl text-center font-bold flex items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+                    <CheckCircle2 className="w-5 h-5" /> Thank you! We will call you soon.
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FLOATING WHATSAPP BUTTON */}
       <a 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Edit3, Save, Download, Trash, Trees, Plus, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, Edit3, Save, Download, Trash, Trees, Plus, X, Road } from 'lucide-react';
 import initialGridData from '../data/layoutMatrix.json';
 
 type MapItem = {
@@ -28,6 +28,18 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
   const [editMode, setEditMode] = useState(false);
   const [editingItem, setEditingItem] = useState<MapItem | null>(null);
   const [originalId, setOriginalId] = useState<string | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<MapItem | null>(null);
+
+  // Helper to determine road size based on grid dimensions
+  const getRoadInfo = (item: MapItem) => {
+    if (item.type !== 'road') return null;
+    // Roads with h >= 12 or w >= 2 are likely Main Streets (40ft)
+    const isMainRoad = item.h >= 12 || item.w >= 2; 
+    return {
+      name: item.label || (isMainRoad ? "MAIN STREET" : "INTERNAL ROAD"),
+      size: isMainRoad ? "40'-0\" WIDE ROAD" : "25'-0\" WIDE ROAD"
+    };
+  };
 
   // Sync state when JSON file changes via hot-reload
   useEffect(() => {
@@ -186,6 +198,30 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
               You can click and drag the map to move around.
             </p>
         </div>
+
+        <div className="h-px bg-neutral-200"></div>
+
+        {/* Plot Legend (SQFt Mapper) */}
+        <div>
+          <h3 className="font-bold text-sm text-neutral-500 tracking-wider mb-4 uppercase">Plot Type & Area</h3>
+          <div className="space-y-4">
+            {[
+              { type: 'A', area: '2700 SQ. FT.', dim: "45'-0\" X 60'-0\"", color: 'bg-[#fca5a5] border-rose-300 text-rose-900' },
+              { type: 'B', area: '1800 SQ. FT.', dim: "36'-0\" X 50'-0\"", color: 'bg-[#f9a8d4] border-pink-300 text-pink-900' },
+              { type: 'C', area: '1200 SQ. FT.', dim: "30'-0\" X 40'-0\"", color: 'bg-[#7dd3fc] border-sky-300 text-sky-900' },
+            ].map((item) => (
+              <div key={item.type} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-neutral-100 shadow-sm">
+                <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center font-black text-xl shrink-0 ${item.color}`}>
+                  {item.type}
+                </div>
+                <div>
+                  <div className="text-sm font-black text-neutral-800">{item.area}</div>
+                  <div className="text-[10px] font-bold text-neutral-400">{item.dim}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Grid Canvas */}
@@ -196,6 +232,45 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
+        {/* MAP OVERLAYS (Compass) */}
+        <div className="absolute top-6 left-6 z-40 pointer-events-none space-y-4">
+          {/* Compass */}
+          <div className="bg-white/90 backdrop-blur p-3 rounded-2xl shadow-xl border border-white/20 flex flex-col items-center">
+            <svg width="60" height="60" viewBox="0 0 100 100" className="drop-shadow-sm">
+              <circle cx="50" cy="50" r="48" fill="none" stroke="#ccc" strokeWidth="0.5" strokeDasharray="2 2" />
+              <text x="50" y="15" textAnchor="middle" fontSize="14" fontWeight="900" fill="#ef4444">N</text>
+              <text x="50" y="96" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">S</text>
+              <text x="94" y="55" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">E</text>
+              <text x="6" y="55" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">W</text>
+              {/* Needle */}
+              <path d="M50 20 L58 50 L50 80 L42 50 Z" fill="#ef4444" />
+              <path d="M20 50 L50 42 L80 50 L50 58 Z" fill="#333" />
+              <circle cx="50" cy="50" r="5" fill="white" stroke="#ef4444" strokeWidth="2" />
+            </svg>
+            <span className="text-[10px] font-black mt-1 text-neutral-500 tracking-widest">COMPASS</span>
+          </div>
+        </div>
+
+        {/* ROAD INFO OVERLAY (Top Right) */}
+        {hoveredItem && hoveredItem.type === 'road' && (
+          <div className="absolute top-6 right-6 z-40 animate-in fade-in slide-in-from-right-4 duration-200">
+            <div className="bg-white/95 backdrop-blur-md p-5 rounded-2xl shadow-2xl border-l-[6px] border-emerald-600 shadow-emerald-900/20 flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700">
+                <Road className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-emerald-600 tracking-widest uppercase mb-1">Road Details</div>
+                <div className="text-xl font-black text-neutral-800 leading-none mb-1">
+                  {getRoadInfo(hoveredItem)?.name}
+                </div>
+                <div className="text-xs font-bold text-neutral-500 italic">
+                  {getRoadInfo(hoveredItem)?.size}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div 
           className="transition-transform duration-75 origin-center absolute inset-0"
           style={{ 
@@ -244,22 +319,25 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
              return (
                 <button
                   key={item.id}
+                  onMouseEnter={() => setHoveredItem(item)}
+                  onMouseLeave={() => setHoveredItem(null)}
                   onMouseUp={(e) => {
                     // Only trigger click if we aren't dragging significantly
                     if (!isDragging || (Math.abs(e.movementX) < 2 && Math.abs(e.movementY) < 2)) {
                       handleItemClick(item);
                     }
                   }}
-                  title={`${item.id} (${item.w}x${item.h})`}
+                  title={item.type === 'road' ? '' : `${item.id} (${item.w}x${item.h})`}
                   style={{ 
                     gridColumn: `${item.x + 1} / span ${item.w}`, 
                     gridRow: `${item.y + 1} / span ${item.h}`,
                     backgroundColor: item.type === 'plot' && item.color ? item.color : undefined,
-                    zIndex: isSelected ? 20 : 10
+                    zIndex: isSelected ? 30 : (item.type === 'road' ? 5 : 10)
                   }}
-                  className={`flex items-center justify-center text-[8.5px] font-bold transition-all hover:brightness-110 
+                  className={`flex items-center justify-center text-[8.5px] font-bold transition-all
                     ${bgClass} ${borderClass}
-                    ${isSelected ? 'ring-2 ring-yellow-400 brightness-110 scale-[1.15] shadow-xl z-30' : ''}
+                    ${isSelected ? 'ring-2 ring-yellow-400 brightness-110 scale-[1.15] shadow-xl z-30' : 'hover:brightness-110'}
+                    ${item.type === 'road' ? 'hover:scale-[1.01] hover:brightness-125 z-10' : ''}
                     ${editMode ? 'hover:ring-1 hover:ring-white' : ''}
                   `}
                 >
