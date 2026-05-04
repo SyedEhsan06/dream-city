@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Edit3, Save, Download, Upload, Trash, Trees, Plus, X, Road, MousePointerSquareDashed } from 'lucide-react';
+import { ZoomIn, ZoomOut, Edit3, Save, Download, Upload, Trash, Trees, Plus, X, Road, MousePointerSquareDashed, Shield, Zap } from 'lucide-react';
 import initialGridData from '../data/layoutMatrix.json';
 
 export type MapItem = {
@@ -30,6 +30,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   const [lastTouch, setLastTouch] = useState({ x: 0, y: 0 });
   const [dragDistance, setDragDistance] = useState(0);
   const [gridSize, setGridSize] = useState({ x: 40, y: 80 });
+  const [isLocked, setIsLocked] = useState(false);
   
   // Editor State
   const [items, setItems] = useState<MapItem[]>(initialGridData as MapItem[]);
@@ -226,6 +227,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (isLocked) return;
     setIsDragging(true);
     setDragDistance(0);
   };
@@ -233,8 +235,13 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
     const moved = Math.abs(e.movementX) + Math.abs(e.movementY);
-    setDragDistance(prev => prev + moved);
-    setPan(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
+    const newTotalMoved = dragDistance + moved;
+    setDragDistance(newTotalMoved);
+    
+    // Only start panning if we've moved significantly (threshold: 5px)
+    if (newTotalMoved > 5) {
+      setPan(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
+    }
   };
   
   const handleMouseUp = () => {
@@ -242,6 +249,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isLocked) return;
     if (e.touches.length === 1) {
       setIsDragging(true);
       setDragDistance(0);
@@ -255,12 +263,16 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
     const currentY = e.touches[0].clientY;
     
     const moved = Math.abs(currentX - lastTouch.x) + Math.abs(currentY - lastTouch.y);
-    setDragDistance(prev => prev + moved);
+    const newTotalMoved = dragDistance + moved;
+    setDragDistance(newTotalMoved);
     
-    setPan(prev => ({ 
-      x: prev.x + (currentX - lastTouch.x), 
-      y: prev.y + (currentY - lastTouch.y) 
-    }));
+    // Only start panning if we've moved significantly (threshold: 5px)
+    if (newTotalMoved > 5) {
+      setPan(prev => ({ 
+        x: prev.x + (currentX - lastTouch.x), 
+        y: prev.y + (currentY - lastTouch.y) 
+      }));
+    }
     setLastTouch({ x: currentX, y: currentY });
   };
 
@@ -363,13 +375,39 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
         <div className="h-px bg-neutral-200"></div>
 
         <div>
-            <h3 className="font-bold text-sm text-neutral-500 tracking-wider mb-3 uppercase">Map Controls</h3>
-            <div className="flex gap-2 mb-3">
-              <button onClick={() => setMapScale(s => Math.min(s + 0.2, 3))} className="flex-1 bg-white border border-neutral-300 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-50 transition shadow-sm font-medium text-sm text-neutral-700"><ZoomIn className="w-4 h-4"/> Zoom In</button>
-              <button onClick={() => setMapScale(s => Math.max(s - 0.2, 0.3))} className="flex-1 bg-white border border-neutral-300 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-50 transition shadow-sm font-medium text-sm text-neutral-700"><ZoomOut className="w-4 h-4"/> Zoom Out</button>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-sm text-neutral-500 tracking-wider uppercase">Map Controls</h3>
+              <button 
+                onClick={() => setIsLocked(!isLocked)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black transition-all ${
+                  isLocked ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-200' : 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200'
+                }`}
+              >
+                {isLocked ? (
+                  <><Shield className="w-3 h-3" /> MAP LOCKED</>
+                ) : (
+                  <><Zap className="w-3 h-3" /> MAP ACTIVE</>
+                )}
+              </button>
             </div>
-            <p className="text-xs text-neutral-500 font-medium text-center">
-              You can click and drag the map to move around.
+            <div className="flex gap-2 mb-3">
+              <button 
+                disabled={isLocked}
+                onClick={() => setMapScale(s => Math.min(s + 0.2, 3))} 
+                className="flex-1 bg-white border border-neutral-300 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-50 transition shadow-sm font-medium text-sm text-neutral-700 disabled:opacity-50 disabled:grayscale"
+              >
+                <ZoomIn className="w-4 h-4"/> Zoom In
+              </button>
+              <button 
+                disabled={isLocked}
+                onClick={() => setMapScale(s => Math.max(s - 0.2, 0.3))} 
+                className="flex-1 bg-white border border-neutral-300 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-50 transition shadow-sm font-medium text-sm text-neutral-700 disabled:opacity-50 disabled:grayscale"
+              >
+                <ZoomOut className="w-4 h-4"/> Zoom Out
+              </button>
+            </div>
+            <p className="text-xs text-neutral-500 font-medium text-center italic">
+              {isLocked ? "Unlock map to move or zoom." : "You can click and drag the map to move around."}
             </p>
         </div>
 
