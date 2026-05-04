@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { MapPin, Phone, MessageCircle, Trees, Route as Road, Map, ShieldCheck, CheckCircle2, Navigation, X, Droplets, Zap, Shield, Home as HomeIcon, ArrowRight } from 'lucide-react';
 import PlotMap, { MapItem } from '../components/PlotMap';
 import layoutMatrix from '../data/layoutMatrix.json';
+import Image from 'next/image';
 
 export default function Home() {
   const [formData, setFormData] = useState({ name: '', phone: '', plot_interest: '' });
@@ -29,11 +30,17 @@ export default function Home() {
     
     let count = 0;
     currentMapData.forEach((item: any) => {
-      if (item.type === 'plot') {
-        let plotSqft = 1000;
-        if (item.id.startsWith('A') || item.id.startsWith('RA')) plotSqft = 2700;
-        else if (item.id.startsWith('B') || item.id.startsWith('RB')) plotSqft = 1800;
-        else if (item.id.startsWith('C') || item.id.startsWith('RC')) plotSqft = 1200;
+      // Robust check for plot type (case-insensitive)
+      const isPlot = item.type && item.type.toLowerCase() === 'plot';
+      if (isPlot && item.id) {
+        const id = item.id.toUpperCase();
+        let plotSqft = 0;
+        
+        // Determine sqft based on ID prefix
+        if (id.startsWith('A') || id.startsWith('RA')) plotSqft = 2700;
+        else if (id.startsWith('B') || id.startsWith('RB')) plotSqft = 1800;
+        else if (id.startsWith('C') || id.startsWith('RC')) plotSqft = 1200;
+        else plotSqft = 1000; // Fallback
         
         if (plotSqft >= sqft) {
           count++;
@@ -84,8 +91,11 @@ export default function Home() {
 
       {/* HERO SECTION */}
       <section className="relative pt-24 pb-48 px-6 overflow-hidden bg-emerald-900 text-white">
-        <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-900/80 to-transparent"></div>
+{/* Background Image */}
+<div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center opacity-30"></div>
+
+{/* Subtle Gradient Overlay */}
+<div className="absolute inset-0 bg-gradient-to-t from-emerald-500/40 via-emerald-400/20 to-transparent"></div> 
         
         <div className="relative max-w-4xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-800/50 border border-emerald-700 backdrop-blur-sm text-emerald-100 text-sm font-medium">
@@ -371,7 +381,7 @@ export default function Home() {
       </section>
 
       {/* LEAD CAPTURE / CONTACT & LOCATION MAP */}
-      <section id="contact" className="py-24 px-6 bg-neutral-50 relative">
+      <section id="location" className="py-24 px-6 bg-neutral-50 relative">
         <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col md:flex-row relative z-10">
           
           <div className="w-full md:w-5/12 bg-emerald-800 text-white flex flex-col">
@@ -573,9 +583,9 @@ export default function Home() {
         href="https://wa.me/919876543210" 
         target="_blank" 
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition duration-300 flex items-center justify-center group"
+        className="fixed bottom-6 right-6 z-50  text-white rounded-full shadow-2xl hover:scale-110 transition duration-300 flex items-center justify-center group"
       >
-        <MessageCircle className="w-7 h-7" />
+        <Image src="/Whatsapp.svg" alt="Whatsapp" width={40} height={40} />
         <span className="absolute right-full mr-4 bg-white text-neutral-900 px-4 py-2 rounded-xl text-sm font-bold shadow-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">
           Chat with us
         </span>

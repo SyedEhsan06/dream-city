@@ -19,7 +19,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   onSelectPlot: (plotId: string, sqft: number) => void,
   onDataChange?: (data: MapItem[]) => void
 }) {
-  const [mapScale, setMapScale] = useState(1);
+  const [mapScale, setMapScale] = useState(0.5);
   const [selectedPlot, setSelectedPlot] = useState<string | null>(null);
   
   // Panning State
@@ -28,6 +28,8 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   
   // Touch State
   const [lastTouch, setLastTouch] = useState({ x: 0, y: 0 });
+  const [dragDistance, setDragDistance] = useState(0);
+  const [gridSize, setGridSize] = useState({ x: 40, y: 80 });
   
   // Editor State
   const [items, setItems] = useState<MapItem[]>(initialGridData as MapItem[]);
@@ -140,31 +142,29 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   const saveEditedItems = () => {
     if (selectedIds.length === 0) return;
 
-    if (selectedIds.length === 1) {
-      const cleanId = bulkConfig.prefix.trim();
-      if (!cleanId) {
-        alert("Error: ID cannot be empty.");
-        return;
-      }
-      const isDuplicate = items.some(i => i.id === cleanId && !selectedIds.includes(i.id));
-      if (isDuplicate) {
-        alert(`Error: The ID "${cleanId}" is already used by another item.`);
-        return;
-      }
-    } else {
-      // Bulk validation: check if any of the new IDs will conflict with EXISTING items (not in current selection)
-      const existingIds = new Set(items.filter(i => !selectedIds.includes(i.id)).map(i => i.id));
-      for (let i = 0; i < selectedIds.length; i++) {
-        const nextId = `${bulkConfig.prefix}${bulkConfig.startNumber + i}`;
-        if (existingIds.has(nextId)) {
-          alert(`Error: The ID "${nextId}" is already used by another item. Please choose a different start number or prefix.`);
-          return;
-        }
-      }
+    if (selectedIds.length === 1 && !bulkConfig.prefix.trim()) {
+      alert("Error: ID cannot be empty.");
+      return;
     }
 
     setItems(prev => {
-      const newItems = [...prev];
+      let newItems = [...prev];
+      
+      // Handle conflicts: If an existing item (not in selection) has an ID we're about to use, rename it.
+      selectedIds.forEach((_, index) => {
+        const targetId = selectedIds.length === 1 
+          ? bulkConfig.prefix.trim() 
+          : `${bulkConfig.prefix}${bulkConfig.startNumber + index}`;
+          
+        newItems = newItems.map(item => {
+          if (!selectedIds.includes(item.id) && item.id === targetId) {
+            return { ...item, id: `${item.id}-old-${Math.floor(Math.random() * 1000)}` };
+          }
+          return item;
+        });
+      });
+
+      // Apply changes to selected items
       selectedIds.forEach((id, index) => {
         const idx = newItems.findIndex(i => i.id === id);
         if (idx !== -1) {
@@ -227,28 +227,36 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
+    setDragDistance(0);
   };
-
+  
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
+    const moved = Math.abs(e.movementX) + Math.abs(e.movementY);
+    setDragDistance(prev => prev + moved);
     setPan(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
   };
-
+  
   const handleMouseUp = () => {
-    setIsDragging(false);
+    setTimeout(() => setIsDragging(false), 50); // Small delay to ensure click handlers see the state
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       setIsDragging(true);
+      setDragDistance(0);
       setLastTouch({ x: e.touches[0].clientX, y: e.touches[0].clientY });
     }
   };
-
+  
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || e.touches.length !== 1) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
+    
+    const moved = Math.abs(currentX - lastTouch.x) + Math.abs(currentY - lastTouch.y);
+    setDragDistance(prev => prev + moved);
+    
     setPan(prev => ({ 
       x: prev.x + (currentX - lastTouch.x), 
       y: prev.y + (currentY - lastTouch.y) 
@@ -262,19 +270,19 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
 
   const backgroundCells = useMemo(() => {
     const cells = [];
-    for(let y = 0; y < 79; y++) {
-      for(let x = 0; x < 40; x++) {
+    for(let y = 0; y < gridSize.y; y++) {
+      for(let x = 0; x < gridSize.x; x++) {
         cells.push({ x, y });
       }
     }
     return cells;
-  }, []);
+  }, [gridSize]);
 
   return (
-    <div className="flex flex-col-reverse lg:flex-row gap-6 bg-white p-4 rounded-3xl shadow-xl border border-neutral-200">
+    <div className="flex flex-col lg:flex-row gap-6 bg-white p-2 md:p-6 rounded-[2rem] shadow-2xl border border-neutral-200">
       
-      {/* Sidebar Controls */}
-      <div className="w-full lg:w-72 shrink-0 flex flex-col gap-6 p-6 bg-neutral-50 rounded-2xl border border-neutral-100 relative z-10 shadow-sm">
+      {/* Sidebar Controls - Order 2 on mobile, Order 1 on desktop */}
+      <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6 p-4 md:p-8 bg-neutral-50 rounded-3xl border border-neutral-100 relative z-10 shadow-sm order-2 lg:order-1">
         
         {/* Editor Controls */}
         <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
@@ -321,6 +329,30 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
                 <Upload className="w-4 h-4" /> Import Map JSON
               </button>
               
+              <div className="mt-4 p-3 bg-neutral-50 rounded-xl border border-neutral-200 space-y-3">
+                <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Grid Size</h4>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-neutral-500 font-bold block mb-1">Width (X)</label>
+                    <input 
+                      type="number" 
+                      value={gridSize.x} 
+                      onChange={e => setGridSize(prev => ({ ...prev, x: parseInt(e.target.value) || 1 }))}
+                      className="w-full bg-white border border-neutral-200 rounded-lg px-2 py-1 text-xs font-bold focus:ring-2 outline-none"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-neutral-500 font-bold block mb-1">Height (Y)</label>
+                    <input 
+                      type="number" 
+                      value={gridSize.y} 
+                      onChange={e => setGridSize(prev => ({ ...prev, y: parseInt(e.target.value) || 1 }))}
+                      className="w-full bg-white border border-neutral-200 rounded-lg px-2 py-1 text-xs font-bold focus:ring-2 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-4 text-xs text-neutral-500 font-medium leading-relaxed bg-neutral-100 p-3 rounded-lg border border-neutral-200">
                 <strong>Tip:</strong> Click multiple items to select them sequentially. Clicking empty spaces creates new plots instantly. Click "Edit Selected" to bulk update IDs incrementally (e.g. A-101, A-102).
               </div>
@@ -345,15 +377,15 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
 
         {/* Plot Legend (SQFt Mapper) */}
         <div>
-          <h3 className="font-bold text-sm text-neutral-500 tracking-wider mb-4 uppercase">Plot Type & Area</h3>
-          <div className="space-y-4">
+          <h3 className="font-bold text-[10px] md:text-sm text-neutral-400 tracking-widest mb-4 uppercase">Plot Type & Area</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 md:gap-4">
             {[
               { type: 'A', area: '2700 SQ. FT.', dim: "45'-0\" X 60'-0\"", color: 'bg-[#fca5a5] border-rose-300 text-rose-900' },
               { type: 'B', area: '1800 SQ. FT.', dim: "36'-0\" X 50'-0\"", color: 'bg-[#f9a8d4] border-pink-300 text-pink-900' },
               { type: 'C', area: '1200 SQ. FT.', dim: "30'-0\" X 40'-0\"", color: 'bg-[#7dd3fc] border-sky-300 text-sky-900' },
             ].map((item) => (
-              <div key={item.type} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-neutral-100 shadow-sm">
-                <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center font-black text-xl shrink-0 ${item.color}`}>
+              <div key={item.type} className="flex items-center gap-3 bg-white p-2 md:p-3 rounded-2xl border border-neutral-100 shadow-sm">
+                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl border-2 flex items-center justify-center font-black text-lg md:text-xl shrink-0 ${item.color}`}>
                   {item.type}
                 </div>
                 <div>
@@ -366,9 +398,9 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
         </div>
       </div>
 
-      {/* Grid Canvas */}
+      {/* Grid Canvas - Order 1 on mobile, Order 2 on desktop */}
       <div 
-        className={`w-full flex-1 bg-[#2c3238] rounded-2xl overflow-hidden relative h-[450px] md:h-[800px] border-[4px] md:border-[6px] border-[#1e2328] shadow-inner select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none`}
+        className={`w-full flex-1 bg-[#2c3238] rounded-3xl overflow-hidden relative min-h-[500px] h-[60vh] md:h-[800px] border-[4px] md:border-[8px] border-[#1e2328] shadow-2xl select-none order-1 lg:order-2 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -420,7 +452,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
           style={{ 
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${mapScale})`,
             display: 'grid',
-            gridTemplateColumns: `repeat(40, 36px)`, 
+            gridTemplateColumns: `repeat(${gridSize.x}, 36px)`, 
             gridAutoRows: '20px', 
             gap: '1px',
             backgroundColor: '#1e2328', 
@@ -466,7 +498,8 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
                   onMouseEnter={() => setHoveredItem(item)}
                   onMouseLeave={() => setHoveredItem(null)}
                   onMouseUp={(e) => {
-                    if (!isDragging || (Math.abs(e.movementX) < 2 && Math.abs(e.movementY) < 2)) {
+                    // Only trigger click if the mouse didn't move significantly (drag threshold: 10px)
+                    if (dragDistance < 10) {
                       handleItemClick(item);
                     }
                   }}
@@ -484,7 +517,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
                     ${editMode ? 'hover:ring-1 hover:ring-white' : ''}
                   `}
                 >
-                   {typeof content === 'string' ? <span className="truncate px-0.5">{content}</span> : content}
+                   {typeof content === 'string' ? <span className="whitespace-nowrap px-0.5">{content}</span> : content}
                    
                    {editMode && selectionIndex !== -1 && selectedIds.length > 1 && (
                      <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[6px] font-black w-3 h-3 flex items-center justify-center rounded-bl-sm shadow-sm">
