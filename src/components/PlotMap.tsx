@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ZoomIn, ZoomOut, Edit3, Save, Download, Upload, Trash, Trees, Plus, X, Road, MousePointerSquareDashed } from 'lucide-react';
 import initialGridData from '../data/layoutMatrix.json';
 
-type MapItem = {
+export type MapItem = {
   id: string;
   type: 'plot' | 'road' | 'park' | 'empty';
   x: number;

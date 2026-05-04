@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { MapPin, Phone, MessageCircle, Trees, Route as Road, Map, ShieldCheck, CheckCircle2, Navigation, X, Droplets, Zap, Shield, Home as HomeIcon, ArrowRight } from 'lucide-react';
-import PlotMap from '../components/PlotMap';
+import PlotMap, { MapItem } from '../components/PlotMap';
 import layoutMatrix from '../data/layoutMatrix.json';
 
 export default function Home() {
@@ -249,7 +249,7 @@ export default function Home() {
           
           <PlotMap 
             onSelectPlot={(id, sqft) => setSelectedPlot({ id, sqft, status: 'available' })} 
-            onDataChange={useCallback((data) => setCurrentMapData(data), [])}
+            onDataChange={useCallback((data: MapItem[]) => setCurrentMapData(data), [])}
           />
         </div>
       </section>
