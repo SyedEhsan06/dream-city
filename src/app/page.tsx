@@ -3,12 +3,46 @@
 import React, { useState } from 'react';
 import { MapPin, Phone, MessageCircle, Trees, Route as Road, Map, ShieldCheck, CheckCircle2, Navigation, X, Droplets, Zap, Shield, Home as HomeIcon, ArrowRight } from 'lucide-react';
 import PlotMap from '../components/PlotMap';
+import layoutMatrix from '../data/layoutMatrix.json';
 
 export default function Home() {
   const [formData, setFormData] = useState({ name: '', phone: '', plot_interest: '' });
   const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
   const [selectedPlot, setSelectedPlot] = useState<any>(null);
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
+  
+  // Search State
+  const [searchSqft, setSearchSqft] = useState<string>('');
+  const [searchResult, setSearchResult] = useState<{ count: number, message: string } | null>(null);
+  const [currentMapData, setCurrentMapData] = useState<any[]>(layoutMatrix);
+
+  const handleSearch = () => {
+    if (!searchSqft) {
+      setSearchResult({ count: 0, message: 'Please enter a minimum area in square feet.' });
+      return;
+    }
+    const sqft = parseInt(searchSqft);
+    if (isNaN(sqft) || sqft <= 0) {
+      setSearchResult({ count: 0, message: 'Invalid area entered.' });
+      return;
+    }
+    
+    let count = 0;
+    currentMapData.forEach((item: any) => {
+      if (item.type === 'plot') {
+        let plotSqft = 1000;
+        if (item.id.startsWith('A') || item.id.startsWith('RA')) plotSqft = 2700;
+        else if (item.id.startsWith('B') || item.id.startsWith('RB')) plotSqft = 1800;
+        else if (item.id.startsWith('C') || item.id.startsWith('RC')) plotSqft = 1200;
+        
+        if (plotSqft >= sqft) {
+          count++;
+        }
+      }
+    });
+
+    setSearchResult({ count, message: '' });
+  };
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +83,7 @@ export default function Home() {
       </header>
 
       {/* HERO SECTION */}
-      <section className="relative pt-24 pb-32 px-6 overflow-hidden bg-emerald-900 text-white">
+      <section className="relative pt-24 pb-48 px-6 overflow-hidden bg-emerald-900 text-white">
         <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-900/80 to-transparent"></div>
         
@@ -73,6 +107,104 @@ export default function Home() {
             >
               Book Site Visit
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* QUICK FIND / HIGHLIGHTS SECTION */}
+      <section className="relative z-20 -mt-24 px-6 mb-24">
+        <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-2xl border border-neutral-100 overflow-hidden flex flex-col md:flex-row">
+          
+          {/* Find Plot Form */}
+          <div className="w-full md:w-1/3 p-8 lg:p-12 bg-white border-b md:border-b-0 md:border-r border-neutral-100">
+            <h3 className="text-sm font-bold text-neutral-400 tracking-widest uppercase mb-1">Find Your</h3>
+            <h2 className="text-3xl font-black text-neutral-900 mb-8">PLOT HERE</h2>
+            <form className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-neutral-500 mb-2 uppercase">State</label>
+                <input type="text" value="Bihar" readOnly className="w-full border-b-2 border-neutral-200 py-2 text-neutral-900 font-bold focus:border-amber-500 outline-none bg-transparent cursor-default" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-neutral-500 mb-2 uppercase">City</label>
+                <input type="text" value="Bettiah" readOnly className="w-full border-b-2 border-neutral-200 py-2 text-neutral-900 font-bold focus:border-amber-500 outline-none bg-transparent cursor-default" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-neutral-500 mb-2 uppercase">Min area (sqft)</label>
+                <input 
+                  type="number" 
+                  value={searchSqft}
+                  onChange={(e) => setSearchSqft(e.target.value)}
+                  placeholder="e.g. 1200" 
+                  className="w-full border-b-2 border-neutral-200 py-2 text-neutral-900 font-bold focus:border-amber-500 outline-none bg-transparent transition-colors" 
+                />
+              </div>
+
+              {searchResult && (
+                <div className={`p-4 rounded-xl border font-medium animate-in fade-in zoom-in-95 ${searchResult.count > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+                  {searchResult.count > 0 ? (
+                    <div>
+                      <div className="font-bold text-lg mb-2 flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        {searchResult.count} Plots Available!
+                      </div>
+                      <button type="button" onClick={() => document.getElementById('plots')?.scrollIntoView({ behavior: 'smooth' })} className="text-emerald-700 hover:text-emerald-900 font-bold text-sm underline underline-offset-2 transition-colors">
+                        View them on the Master Plan &rarr;
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="font-bold text-lg mb-1">No exact matches</div>
+                      <p className="text-rose-700/80 mb-4 text-xs leading-relaxed">
+                        {searchResult.message || `We couldn't find available plots matching ${searchSqft} sqft or more right now. We often do custom groupings.`}
+                      </p>
+                      <button type="button" onClick={() => setIsEnquiryModalOpen(true)} className="bg-rose-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-rose-700 transition shadow-sm">
+                        Contact Sales Team
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!searchResult || searchResult.count > 0 ? (
+                <button type="button" onClick={handleSearch} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-4 rounded-xl mt-4 transition shadow-lg shadow-amber-600/20">
+                  Search Plots
+                </button>
+              ) : null}
+            </form>
+          </div>
+
+          {/* Value Props */}
+          <div className="w-full md:w-2/3 p-8 lg:p-12 bg-neutral-50">
+            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-12">
+              <div>
+                <div className="text-amber-600 mb-4">
+                  <ShieldCheck className="w-10 h-10" />
+                </div>
+                <h4 className="text-lg font-black text-neutral-900 mb-3 uppercase tracking-wide">PLOT</h4>
+                <p className="text-sm text-neutral-600 leading-relaxed">Comfort and convenience is the mantra for modern living and our plots give you exactly this. With underground water and electricity supplies already.</p>
+              </div>
+              <div>
+                <div className="text-amber-600 mb-4">
+                  <Map className="w-10 h-10" />
+                </div>
+                <h4 className="text-lg font-black text-neutral-900 mb-3 uppercase tracking-wide">EMI FACILITY</h4>
+                <p className="text-sm text-neutral-600 leading-relaxed">Equated monthly installment, as the name suggests, is one part of the equally divided monthly outgoes to clear off an outstanding.</p>
+              </div>
+              <div>
+                <div className="text-amber-600 mb-4">
+                  <HomeIcon className="w-10 h-10" />
+                </div>
+                <h4 className="text-lg font-black text-neutral-900 mb-3 uppercase tracking-wide">LOW COST</h4>
+                <p className="text-sm text-neutral-600 leading-relaxed">To stay healthy one needs a proper place to reside for the entire life and that is home. This is one important component of one's life.</p>
+              </div>
+              <div>
+                <div className="text-amber-600 mb-4">
+                  <Zap className="w-10 h-10" />
+                </div>
+                <h4 className="text-lg font-black text-neutral-900 mb-3 uppercase tracking-wide">BRIGHT PLACE</h4>
+                <p className="text-sm text-neutral-600 leading-relaxed">At Dream City, we are all about plots, all about service, and most of all we are where your life happens!</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -108,14 +240,17 @@ export default function Home() {
       </section>
 
       {/* INTERACTIVE PLOT MAP */}
-      <section id="plots" className="py-24 px-6 bg-neutral-100 border-y border-neutral-200 overflow-hidden">
+      <section id="plots" className="py-24 px-4 sm:px-6 bg-neutral-100 border-y border-neutral-200 overflow-hidden">
         <div className="max-w-[1400px] mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">Master Plan & Plot Availability</h2>
-            <p className="text-neutral-600 max-w-2xl mx-auto">Explore our real project layout. Select an available plot to send an enquiry.</p>
+            <h2 className="text-3xl md:text-5xl font-black text-neutral-900 mb-4 tracking-tight">Master Plan & Plot Availability</h2>
+            <p className="text-neutral-600 max-w-2xl mx-auto text-lg">Explore our real project layout. Select an available plot to send an enquiry.</p>
           </div>
           
-          <PlotMap onSelectPlot={(id, sqft) => setSelectedPlot({ id, sqft, status: 'available' })} />
+          <PlotMap 
+            onSelectPlot={(id, sqft) => setSelectedPlot({ id, sqft, status: 'available' })} 
+            onDataChange={(data) => setCurrentMapData(data)}
+          />
         </div>
       </section>
 
@@ -210,25 +345,25 @@ export default function Home() {
       </section>
 
       {/* FAQ SECTION */}
-      <section className="py-24 px-6 bg-white border-b border-neutral-200">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-24 px-6 bg-emerald-950 text-white border-b border-emerald-900">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">Frequently Asked Questions</h2>
-            <p className="text-neutral-600 text-lg">Got questions? We've got answers.</p>
+            <h2 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">Frequently Asked Questions</h2>
+            <p className="text-emerald-200 text-lg max-w-2xl mx-auto">Got questions? We've got answers to help you make the best investment decision.</p>
           </div>
-          <div className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-6">
             {[
-              { q: "Is the project legally verified?", a: "Yes, Dream Park has 100% clear titles and all necessary approvals from the local authorities. You can review the papers anytime." },
+              { q: "Is the project legally verified?", a: "Yes, Dream City Bettiah has 100% clear titles and all necessary approvals from the local authorities. You can review the papers anytime." },
               { q: "Are bank loans available?", a: "Yes, we have tie-ups with leading nationalized and private banks to offer easy EMI and loan facilities for plots." },
               { q: "When can I start construction?", a: "You can start construction immediately after the registry! The basic infrastructure like roads and plot marking is already in place." },
               { q: "What is the booking amount?", a: "You can secure your plot with a nominal booking amount. Contact our sales team using the form below to get the exact payment schedule." }
             ].map((faq, i) => (
-              <div key={i} className="p-6 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-emerald-200 transition">
-                <h4 className="text-lg font-bold text-neutral-900 mb-2 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm">Q</span>
+              <div key={i} className="p-8 bg-emerald-900/40 rounded-3xl border border-emerald-800/60 hover:bg-emerald-900/80 transition duration-300">
+                <h4 className="text-xl font-bold text-white mb-4 flex items-start gap-4">
+                  <span className="w-8 h-8 shrink-0 rounded-full bg-amber-500 text-emerald-950 flex items-center justify-center text-sm font-black mt-0.5">Q</span>
                   {faq.q}
                 </h4>
-                <p className="text-neutral-600 leading-relaxed ml-8">{faq.a}</p>
+                <p className="text-emerald-100/80 leading-relaxed ml-12 text-lg">{faq.a}</p>
               </div>
             ))}
           </div>
@@ -247,6 +382,15 @@ export default function Home() {
               </p>
               
               <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-emerald-700 rounded-full flex items-center justify-center shrink-0">
+                    <MapPin className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-emerald-300 font-medium tracking-wide mb-1">Our Location</div>
+                    <div className="font-medium text-emerald-50 leading-relaxed">2nd Floor, ManshaTola, Murtuza Manzil,<br/>Bettiah - Motihari Rd, Banuchapar,<br/>Bettiah, Tola Mansaraut, Bihar 845438</div>
+                  </div>
+                </div>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-emerald-700 rounded-full flex items-center justify-center shrink-0">
                     <Phone className="w-5 h-5 text-amber-400" />
@@ -341,8 +485,9 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-2xl font-bold text-white mb-4">Dream City Buildtech</div>
           <p className="mb-8 max-w-md mx-auto leading-relaxed">
-            Mansha Tola, Murtuza Manzil, 2nd Floor, <br/>
-            Bettiah - Motihari Rd, Bihar 845438
+            2nd Floor, ManshaTola, Murtuza Manzil,<br/>
+            Bettiah - Motihari Rd, Banuchapar,<br/>
+            Bettiah, Tola Mansaraut, Bihar 845438
           </p>
           <div className="text-sm">&copy; {new Date().getFullYear()} Dream City Buildtech Pvt. Ltd. All rights reserved.</div>
         </div>

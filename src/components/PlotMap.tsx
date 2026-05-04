@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Edit3, Save, Download, Trash, Trees, Plus, X, Road, MousePointerSquareDashed } from 'lucide-react';
+import { ZoomIn, ZoomOut, Edit3, Save, Download, Upload, Trash, Trees, Plus, X, Road, MousePointerSquareDashed } from 'lucide-react';
 import initialGridData from '../data/layoutMatrix.json';
 
 type MapItem = {
@@ -15,13 +15,19 @@ type MapItem = {
   label?: string;
 };
 
-export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: string, sqft: number) => void }) {
+export default function PlotMap({ onSelectPlot, onDataChange }: { 
+  onSelectPlot: (plotId: string, sqft: number) => void,
+  onDataChange?: (data: MapItem[]) => void
+}) {
   const [mapScale, setMapScale] = useState(1);
   const [selectedPlot, setSelectedPlot] = useState<string | null>(null);
   
   // Panning State
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Touch State
+  const [lastTouch, setLastTouch] = useState({ x: 0, y: 0 });
   
   // Editor State
   const [items, setItems] = useState<MapItem[]>(initialGridData as MapItem[]);
@@ -30,6 +36,8 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
   // Multi-select State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showEditor, setShowEditor] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
   const [bulkConfig, setBulkConfig] = useState({
     prefix: '',
     startNumber: 101,
@@ -51,8 +59,15 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
   };
 
   useEffect(() => {
-    setItems(initialGridData as MapItem[]);
-  }, [initialGridData]);
+    const data = initialGridData as MapItem[];
+    setItems(data);
+    if (onDataChange) onDataChange(data);
+  }, [initialGridData, onDataChange]);
+
+  // Sync state changes up to parent
+  useEffect(() => {
+    if (onDataChange) onDataChange(items);
+  }, [items, onDataChange]);
 
   const getSqft = (id: string) => {
     if (id.startsWith('A') || id.startsWith('RA')) return 2700;
@@ -189,6 +204,22 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
     alert("Map JSON copied to clipboard! You can paste it into layoutMatrix.json");
   };
 
+  const handleImport = () => {
+    try {
+      const parsed = JSON.parse(importText);
+      if (!Array.isArray(parsed)) {
+        alert("Error: Imported data must be an array of map items.");
+        return;
+      }
+      setItems(parsed as MapItem[]);
+      setImportText('');
+      setShowImportModal(false);
+      alert("Map data imported successfully!");
+    } catch (e) {
+      alert("Error: Invalid JSON format.");
+    }
+  };
+
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
   };
@@ -199,6 +230,28 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
   };
 
   const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setLastTouch({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    setPan(prev => ({ 
+      x: prev.x + (currentX - lastTouch.x), 
+      y: prev.y + (currentY - lastTouch.y) 
+    }));
+    setLastTouch({ x: currentX, y: currentY });
+  };
+
+  const handleTouchEnd = () => {
     setIsDragging(false);
   };
 
@@ -213,7 +266,7 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
   }, []);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 bg-white p-4 rounded-3xl shadow-xl border border-neutral-200">
+    <div className="flex flex-col-reverse lg:flex-row gap-6 bg-white p-4 rounded-3xl shadow-xl border border-neutral-200">
       
       {/* Sidebar Controls */}
       <div className="w-full lg:w-72 shrink-0 flex flex-col gap-6 p-6 bg-neutral-50 rounded-2xl border border-neutral-100 relative z-10 shadow-sm">
@@ -254,6 +307,13 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
                 className="w-full mt-3 py-3 rounded-lg font-bold text-sm bg-neutral-800 text-white flex items-center justify-center gap-2 hover:bg-black transition-all shadow-md"
               >
                 <Download className="w-4 h-4" /> Export Map JSON
+              </button>
+
+              <button 
+                onClick={() => setShowImportModal(true)}
+                className="w-full mt-3 py-3 rounded-lg font-bold text-sm bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center gap-2 hover:bg-blue-100 transition-all shadow-sm"
+              >
+                <Upload className="w-4 h-4" /> Import Map JSON
               </button>
               
               <div className="mt-4 text-xs text-neutral-500 font-medium leading-relaxed bg-neutral-100 p-3 rounded-lg border border-neutral-200">
@@ -303,11 +363,15 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
 
       {/* Grid Canvas */}
       <div 
-        className={`flex-1 bg-[#2c3238] rounded-2xl overflow-hidden relative h-[800px] border-[6px] border-[#1e2328] shadow-inner select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className={`w-full flex-1 bg-[#2c3238] rounded-2xl overflow-hidden relative h-[450px] md:h-[800px] border-[4px] md:border-[6px] border-[#1e2328] shadow-inner select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         {/* MAP OVERLAYS (Compass) */}
         <div className="absolute top-6 left-6 z-40 pointer-events-none space-y-4">
@@ -347,7 +411,7 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
         )}
 
         <div 
-          className="transition-transform duration-75 origin-center absolute inset-0"
+          className="transition-transform duration-75 origin-top-left absolute inset-0"
           style={{ 
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${mapScale})`,
             display: 'grid',
@@ -494,6 +558,30 @@ export default function PlotMap({ onSelectPlot }: { onSelectPlot: (plotId: strin
               <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-between gap-3">
                  <button onClick={deleteSelectedItems} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"><Trash className="w-4 h-4"/> Delete</button>
                  <button onClick={saveEditedItems} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-md"><Save className="w-4 h-4"/> Save Items</button>
+              </div>
+           </div>
+        </div>
+      )}
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95">
+              <div className="bg-neutral-100 p-4 border-b border-neutral-200 flex items-center justify-between">
+                 <h3 className="font-bold text-lg text-neutral-800 flex items-center gap-2"><Upload className="w-5 h-5 text-blue-600"/> Import Map Data</h3>
+                 <button onClick={() => setShowImportModal(false)} className="text-neutral-500 hover:text-black"><X className="w-5 h-5"/></button>
+              </div>
+              <div className="p-6 space-y-4">
+                 <p className="text-sm text-neutral-500">Paste your <strong>layoutMatrix.json</strong> content below to update the map layout instantly.</p>
+                 <textarea 
+                   value={importText}
+                   onChange={e => setImportText(e.target.value)}
+                   placeholder='[ { "id": "A-101", ... }, ... ]'
+                   className="w-full h-64 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-xs font-mono focus:ring-2 outline-none resize-none"
+                 />
+              </div>
+              <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-end gap-3">
+                 <button onClick={() => setShowImportModal(false)} className="px-6 py-2 text-neutral-500 hover:text-black text-sm font-bold transition-colors">Cancel</button>
+                 <button onClick={handleImport} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-2 text-sm font-bold flex items-center gap-2 transition-all shadow-md"><Save className="w-4 h-4"/> Import Data</button>
               </div>
            </div>
         </div>
