@@ -297,7 +297,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
       <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6 p-4 md:p-8 bg-neutral-50 rounded-3xl border border-neutral-100 relative z-10 shadow-sm order-2 lg:order-1">
         
         {/* Editor Controls */}
-        <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
+        {/* <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
           <h3 className="font-bold text-sm text-blue-800 tracking-wider mb-3 uppercase flex items-center gap-2">
             <Edit3 className="w-4 h-4" /> Map Builder
           </h3>
@@ -370,8 +370,8 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
               </div>
             </>
           )}
-        </div>
-
+        </div> */}
+{/* 
         <div className="h-px bg-neutral-200"></div>
 
         <div>
@@ -411,7 +411,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
             </p>
         </div>
 
-        <div className="h-px bg-neutral-200"></div>
+        <div className="h-px bg-neutral-200"></div> */}
 
         {/* Plot Legend (SQFt Mapper) */}
         <div>
@@ -573,7 +573,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95">
               <div className="bg-neutral-100 p-4 border-b border-neutral-200 flex items-center justify-between">
-                 <h3 className="font-bold text-lg text-neutral-800">
+                 <h3 className= "font-bold text-lg text-neutral-800">
                    {selectedIds.length > 1 ? `Edit ${selectedIds.length} Items` : 'Edit Grid Item'}
                  </h3>
                  <button onClick={() => setShowEditor(false)} className="text-neutral-500 hover:text-black"><X className="w-5 h-5"/></button>
