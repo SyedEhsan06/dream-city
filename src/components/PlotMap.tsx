@@ -58,16 +58,11 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
     };
   };
 
-  useEffect(() => {
-    const data = initialGridData as MapItem[];
-    setItems(data);
-    if (onDataChange) onDataChange(data);
-  }, [initialGridData, onDataChange]);
-
   // Sync state changes up to parent
   useEffect(() => {
     if (onDataChange) onDataChange(items);
-  }, [items, onDataChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   const getSqft = (id: string) => {
     if (id.startsWith('A') || id.startsWith('RA')) return 2700;
@@ -151,10 +146,20 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
         alert("Error: ID cannot be empty.");
         return;
       }
-      const isDuplicate = items.some(i => i.id === cleanId && i.id !== selectedIds[0]);
+      const isDuplicate = items.some(i => i.id === cleanId && !selectedIds.includes(i.id));
       if (isDuplicate) {
-        alert(`Error: The ID "${cleanId}" is already used.`);
+        alert(`Error: The ID "${cleanId}" is already used by another item.`);
         return;
+      }
+    } else {
+      // Bulk validation: check if any of the new IDs will conflict with EXISTING items (not in current selection)
+      const existingIds = new Set(items.filter(i => !selectedIds.includes(i.id)).map(i => i.id));
+      for (let i = 0; i < selectedIds.length; i++) {
+        const nextId = `${bulkConfig.prefix}${bulkConfig.startNumber + i}`;
+        if (existingIds.has(nextId)) {
+          alert(`Error: The ID "${nextId}" is already used by another item. Please choose a different start number or prefix.`);
+          return;
+        }
       }
     }
 
@@ -457,7 +462,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
 
              return (
                 <button
-                  key={item.id}
+                  key={`${item.id}-${item.x}-${item.y}`}
                   onMouseEnter={() => setHoveredItem(item)}
                   onMouseLeave={() => setHoveredItem(null)}
                   onMouseUp={(e) => {
