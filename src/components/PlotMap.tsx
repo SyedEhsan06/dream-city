@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Edit3, Save, Download, Upload, Trash, Trees, Plus, X, Road, MousePointerSquareDashed, Shield, Zap } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { ZoomIn, ZoomOut, Edit3, Save, Download, Upload, Trash, Trees, Plus, X, Road, MousePointerSquareDashed, Shield, Zap, Grid } from 'lucide-react';
+import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import initialGridData from '../data/layoutMatrix.json';
 
 export type MapItem = {
@@ -19,16 +20,9 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   onSelectPlot: (plotId: string, sqft: number) => void,
   onDataChange?: (data: MapItem[]) => void
 }) {
-  const [mapScale, setMapScale] = useState(0.5);
   const [selectedPlot, setSelectedPlot] = useState<string | null>(null);
+  const transformComponentRef = useRef<ReactZoomPanPinchRef | null>(null);
   
-  // Panning State
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  
-  // Touch State
-  const [lastTouch, setLastTouch] = useState({ x: 0, y: 0 });
-  const [dragDistance, setDragDistance] = useState(0);
   const [gridSize, setGridSize] = useState({ x: 40, y: 80 });
   const [isLocked, setIsLocked] = useState(false);
   
@@ -38,8 +32,11 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
   
   // Multi-select State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showBreakModal, setShowBreakModal] = useState(false);
+  const [breakConfig, setBreakConfig] = useState({ rows: 2, cols: 2 });
   const [importText, setImportText] = useState('');
   const [bulkConfig, setBulkConfig] = useState({
     prefix: '',
@@ -47,7 +44,8 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
     type: 'plot',
     w: 1,
     h: 1,
-    color: ''
+    color: '',
+    label: ''
   });
 
   const [hoveredItem, setHoveredItem] = useState<MapItem | null>(null);
@@ -81,8 +79,42 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
     return 'bg-[#006400] text-white border-[#004000]';
   };
 
-  const handleItemClick = (item: MapItem) => {
+  const handleItemClick = (item: MapItem, e: React.MouseEvent) => {
     if (editMode) {
+      if (e.shiftKey && lastSelectedId) {
+        const lastItem = items.find(i => i.id === lastSelectedId);
+        if (lastItem) {
+          const minX = Math.min(lastItem.x, item.x);
+          const minY = Math.min(lastItem.y, item.y);
+          const maxX = Math.max(lastItem.x + lastItem.w, item.x + item.w);
+          const maxY = Math.max(lastItem.y + lastItem.h, item.y + item.h);
+          
+          const dirX = item.x >= lastItem.x ? 1 : -1;
+          const dirY = item.y >= lastItem.y ? 1 : -1;
+          const width = maxX - minX;
+          const height = maxY - minY;
+          
+          const sortedItemsToSelect = items.filter(i => {
+            return i.x < maxX && (i.x + i.w) > minX &&
+                   i.y < maxY && (i.y + i.h) > minY;
+          }).sort((a, b) => {
+            if (width > height) {
+              if (Math.abs(a.x - b.x) > 0.01) return (a.x - b.x) * dirX;
+              return (a.y - b.y) * dirY;
+            } else {
+              if (Math.abs(a.y - b.y) > 0.01) return (a.y - b.y) * dirY;
+              return (a.x - b.x) * dirX;
+            }
+          }).map(i => i.id);
+          
+          setSelectedIds(prev => {
+            const prevWithoutNew = prev.filter(id => !sortedItemsToSelect.includes(id));
+            return [...prevWithoutNew, ...sortedItemsToSelect];
+          });
+          return;
+        }
+      }
+
       setSelectedIds(prev => {
         if (prev.includes(item.id)) {
           return prev.filter(id => id !== item.id);
@@ -90,10 +122,16 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
           return [...prev, item.id];
         }
       });
+      setLastSelectedId(item.id);
     } else {
       if (item.type === 'plot') {
-        setSelectedPlot(item.id);
-        onSelectPlot(item.id, getSqft(item.id));
+        if (selectedPlot === item.id) {
+          setSelectedPlot(null);
+          onSelectPlot('', 0);
+        } else {
+          setSelectedPlot(item.id);
+          onSelectPlot(item.id, getSqft(item.id));
+        }
       }
     }
   };
@@ -123,7 +161,8 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
           type: item.type,
           w: item.w,
           h: item.h,
-          color: item.color || ''
+          color: item.color || '',
+          label: item.label || ''
         });
       }
     } else if (selectedIds.length > 1) {
@@ -134,7 +173,8 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
         type: firstItem?.type || 'plot',
         w: firstItem?.w || 1,
         h: firstItem?.h || 1,
-        color: firstItem?.color || ''
+        color: firstItem?.color || '',
+        label: ''
       });
     }
     setShowEditor(true);
@@ -186,7 +226,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
             item.id = `${bulkConfig.prefix}${bulkConfig.startNumber + index}`;
           }
           
-          item.label = item.id.includes('-') ? item.id.split('-')[1] : item.id;
+          item.label = bulkConfig.label;
           
           newItems[idx] = item;
         }
@@ -202,6 +242,96 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
     setItems(prev => prev.filter(i => !selectedIds.includes(i.id)));
     setSelectedIds([]);
     setShowEditor(false);
+  };
+
+  const mergeSelectedItems = () => {
+    if (selectedIds.length < 2) return;
+    
+    const selectedItems = items.filter(i => selectedIds.includes(i.id));
+    
+    // Find bounding box
+    const minX = Math.min(...selectedItems.map(i => i.x));
+    const minY = Math.min(...selectedItems.map(i => i.y));
+    const maxX = Math.max(...selectedItems.map(i => i.x + i.w));
+    const maxY = Math.max(...selectedItems.map(i => i.y + i.h));
+    
+    const newW = maxX - minX;
+    const newH = maxY - minY;
+    
+    const newId = `Merged-${Date.now().toString().slice(-4)}`;
+    
+    const newItem: MapItem = {
+      id: newId,
+      type: selectedItems[0].type, // Inherit type from the first item
+      x: minX,
+      y: minY,
+      w: newW,
+      h: newH,
+      color: selectedItems[0].color || '',
+      label: 'Merged'
+    };
+    
+    setItems(prev => {
+      const filtered = prev.filter(i => !selectedIds.includes(i.id));
+      return [...filtered, newItem];
+    });
+    
+    setSelectedIds([newId]);
+  };
+
+  const openBreakModal = () => {
+    const itemsToBreak = items.filter(i => selectedIds.includes(i.id) && (i.w > 1 || i.h > 1));
+    if (itemsToBreak.length > 0) {
+      // Default to breaking into individual 1x1 cells
+      setBreakConfig({ rows: itemsToBreak[0].h, cols: itemsToBreak[0].w });
+      setShowBreakModal(true);
+    }
+  };
+
+  const executeBreak = () => {
+    setItems(prev => {
+      let newItems = [...prev];
+      const itemsToBreak = newItems.filter(i => selectedIds.includes(i.id) && (i.w > 1 || i.h > 1));
+      
+      if (itemsToBreak.length === 0) return prev;
+      
+      const newSelectedIds: string[] = [];
+      
+      itemsToBreak.forEach(item => {
+        newItems = newItems.filter(i => i.id !== item.id);
+
+        // Compute column and row breakpoints as cumulative fractions of the
+        // total block, then round to 4 decimal places to avoid floating-point drift.
+        const colBreaks = Array.from({ length: breakConfig.cols + 1 }, (_, i) =>
+          Math.round((item.x + (item.w * i) / breakConfig.cols) * 10000) / 10000
+        );
+        const rowBreaks = Array.from({ length: breakConfig.rows + 1 }, (_, i) =>
+          Math.round((item.y + (item.h * i) / breakConfig.rows) * 10000) / 10000
+        );
+
+        for (let row = 0; row < breakConfig.rows; row++) {
+          for (let col = 0; col < breakConfig.cols; col++) {
+            const newId = `new-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+            const newItem: MapItem = {
+              id: newId,
+              type: 'plot',
+              x: colBreaks[col],
+              y: rowBreaks[row],
+              w: colBreaks[col + 1] - colBreaks[col],
+              h: rowBreaks[row + 1] - rowBreaks[row],
+              color: '',
+              label: ''
+            };
+            newItems.push(newItem);
+            newSelectedIds.push(newId);
+          }
+        }
+      });
+      
+      setSelectedIds(newSelectedIds);
+      setShowBreakModal(false);
+      return newItems;
+    });
   };
 
   const exportJSON = () => {
@@ -226,59 +356,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (isLocked) return;
-    setIsDragging(true);
-    setDragDistance(0);
-  };
-  
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const moved = Math.abs(e.movementX) + Math.abs(e.movementY);
-    const newTotalMoved = dragDistance + moved;
-    setDragDistance(newTotalMoved);
-    
-    // Only start panning if we've moved significantly (threshold: 5px)
-    if (newTotalMoved > 5) {
-      setPan(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
-    }
-  };
-  
-  const handleMouseUp = () => {
-    setTimeout(() => setIsDragging(false), 50); // Small delay to ensure click handlers see the state
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (isLocked) return;
-    if (e.touches.length === 1) {
-      setIsDragging(true);
-      setDragDistance(0);
-      setLastTouch({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-    }
-  };
-  
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    
-    const moved = Math.abs(currentX - lastTouch.x) + Math.abs(currentY - lastTouch.y);
-    const newTotalMoved = dragDistance + moved;
-    setDragDistance(newTotalMoved);
-    
-    // Only start panning if we've moved significantly (threshold: 5px)
-    if (newTotalMoved > 5) {
-      setPan(prev => ({ 
-        x: prev.x + (currentX - lastTouch.x), 
-        y: prev.y + (currentY - lastTouch.y) 
-      }));
-    }
-    setLastTouch({ x: currentX, y: currentY });
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
+  const handlePointerMove = (e: React.PointerEvent) => {};
 
   const backgroundCells = useMemo(() => {
     const cells = [];
@@ -319,12 +397,36 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
           {editMode && (
             <>
               {selectedIds.length > 0 && (
-                <button 
-                  onClick={openEditor}
-                  className="w-full mt-3 py-3 rounded-lg font-bold text-sm bg-blue-600 text-white flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md animate-in fade-in"
-                >
-                  <MousePointerSquareDashed className="w-4 h-4" /> Edit {selectedIds.length} Selected
-                </button>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button 
+                    onClick={openEditor}
+                    className="flex-1 min-w-[100px] py-3 rounded-lg font-bold text-sm bg-blue-600 text-white flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md animate-in fade-in"
+                  >
+                    <Edit3 className="w-4 h-4" /> Edit {selectedIds.length}
+                  </button>
+                  {selectedIds.length > 1 && (
+                    <button 
+                      onClick={mergeSelectedItems}
+                      className="flex-1 min-w-[100px] py-3 rounded-lg font-bold text-sm bg-purple-600 text-white flex items-center justify-center gap-2 hover:bg-purple-700 transition-all shadow-md animate-in fade-in"
+                    >
+                      <MousePointerSquareDashed className="w-4 h-4" /> Merge
+                    </button>
+                  )}
+                  {items.some(i => selectedIds.includes(i.id) && (i.w > 1 || i.h > 1)) && (
+                    <button 
+                      onClick={openBreakModal}
+                      className="flex-1 min-w-[100px] py-3 rounded-lg font-bold text-sm bg-orange-500 text-white flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-md animate-in fade-in"
+                    >
+                      <Grid className="w-4 h-4" /> Break
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => { setSelectedIds([]); setLastSelectedId(null); }}
+                    className="flex-1 min-w-[100px] py-3 rounded-lg font-bold text-sm bg-neutral-200 text-neutral-700 flex items-center justify-center gap-2 hover:bg-neutral-300 transition-all shadow-sm animate-in fade-in"
+                  >
+                    <X className="w-4 h-4" /> Deselect All
+                  </button>
+                </div>
               )}
               
               <button 
@@ -392,14 +494,14 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
             <div className="flex gap-2 mb-3">
               <button 
                 disabled={isLocked}
-                onClick={() => setMapScale(s => Math.min(s + 0.2, 3))} 
+                onClick={() => transformComponentRef.current?.zoomIn()} 
                 className="flex-1 bg-white border border-neutral-300 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-50 transition shadow-sm font-medium text-sm text-neutral-700 disabled:opacity-50 disabled:grayscale"
               >
                 <ZoomIn className="w-4 h-4"/> Zoom In
               </button>
               <button 
                 disabled={isLocked}
-                onClick={() => setMapScale(s => Math.max(s - 0.2, 0.3))} 
+                onClick={() => transformComponentRef.current?.zoomOut()} 
                 className="flex-1 bg-white border border-neutral-300 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-50 transition shadow-sm font-medium text-sm text-neutral-700 disabled:opacity-50 disabled:grayscale"
               >
                 <ZoomOut className="w-4 h-4"/> Zoom Out
@@ -437,80 +539,85 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
 
       {/* Grid Canvas - Order 1 on mobile, Order 2 on desktop */}
       <div 
-        className={`w-full flex-1 bg-[#2c3238] rounded-3xl overflow-hidden relative min-h-[500px] h-[60vh] md:h-[800px] border-[4px] md:border-[8px] border-[#1e2328] shadow-2xl select-none order-1 lg:order-2 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none`}
-        onWheel={(e) => {
-          if (isLocked) return;
-          if (e.deltaY < 0) setMapScale(s => Math.min(s + 0.1, 3));
-          else setMapScale(s => Math.max(s - 0.1, 0.3));
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
+        className={`w-full flex-1 bg-[#2c3238] rounded-3xl overflow-hidden relative min-h-[500px] h-[60vh] md:h-[800px] border-[4px] md:border-[8px] border-[#1e2328] shadow-2xl select-none order-1 lg:order-2 touch-none cursor-grab active:cursor-grabbing`}
       >
-        {/* MAP OVERLAYS (Compass) */}
-        <div className="absolute top-6 left-6 z-40 pointer-events-none space-y-4">
-          <div className="bg-white/90 backdrop-blur p-3 rounded-2xl shadow-xl border border-white/20 flex flex-col items-center">
-            <svg width="60" height="60" viewBox="0 0 100 100" className="drop-shadow-sm">
-              <circle cx="50" cy="50" r="48" fill="none" stroke="#ccc" strokeWidth="0.5" strokeDasharray="2 2" />
-              <text x="50" y="15" textAnchor="middle" fontSize="14" fontWeight="900" fill="#ef4444">N</text>
-              <text x="50" y="96" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">S</text>
-              <text x="94" y="55" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">E</text>
-              <text x="6" y="55" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">W</text>
-              <path d="M50 20 L58 50 L50 80 L42 50 Z" fill="#ef4444" />
-              <path d="M20 50 L50 42 L80 50 L50 58 Z" fill="#333" />
-              <circle cx="50" cy="50" r="5" fill="white" stroke="#ef4444" strokeWidth="2" />
-            </svg>
-            <span className="text-[10px] font-black mt-1 text-neutral-500 tracking-widest">COMPASS</span>
-          </div>
-        </div>
-
-        {/* ROAD INFO OVERLAY (Top Right) */}
-        {hoveredItem && hoveredItem.type === 'road' && (
-          <div className="absolute top-6 right-6 z-40 animate-in fade-in slide-in-from-right-4 duration-200">
-            <div className="bg-white/95 backdrop-blur-md p-5 rounded-2xl shadow-2xl border-l-[6px] border-emerald-600 shadow-emerald-900/20 flex items-center gap-4">
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700">
-                <Road className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="text-[10px] font-black text-emerald-600 tracking-widest uppercase mb-1">Road Details</div>
-                <div className="text-xl font-black text-neutral-800 leading-none mb-1">
-                  {getRoadInfo(hoveredItem)?.name}
-                </div>
-                <div className="text-xs font-bold text-neutral-500 italic">
-                  {getRoadInfo(hoveredItem)?.size}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div 
-          className="transition-transform duration-75 origin-top-left absolute inset-0"
-          style={{ 
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${mapScale})`,
-            display: 'grid',
-            gridTemplateColumns: `repeat(${gridSize.x}, 36px)`, 
-            gridAutoRows: '20px', 
-            gap: '1px',
-            backgroundColor: '#1e2328', 
-            padding: '2px',
-            borderRadius: '4px',
-            width: 'max-content'
-          }}
+        <TransformWrapper
+          initialScale={0.5}
+          minScale={0.1}
+          maxScale={4}
+          disabled={isLocked}
+          centerOnInit={true}
+          ref={transformComponentRef}
+          panning={{ velocityDisabled: false }}
+          wheel={{ step: 0.1 }}
+          pinch={{ step: 5 }}
         >
+          {({ zoomIn, zoomOut, resetTransform }) => (
+            <>
+              {/* MAP OVERLAYS (Compass) */}
+              <div className="absolute top-6 left-6 z-40 pointer-events-none space-y-4">
+                <div className="bg-white/90 backdrop-blur p-3 rounded-2xl shadow-xl border border-white/20 flex flex-col items-center">
+                  <svg width="60" height="60" viewBox="0 0 100 100" className="drop-shadow-sm">
+                    <circle cx="50" cy="50" r="48" fill="none" stroke="#ccc" strokeWidth="0.5" strokeDasharray="2 2" />
+                    <text x="50" y="15" textAnchor="middle" fontSize="14" fontWeight="900" fill="#ef4444">N</text>
+                    <text x="50" y="96" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">S</text>
+                    <text x="94" y="55" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">E</text>
+                    <text x="6" y="55" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#666">W</text>
+                    <path d="M50 20 L58 50 L50 80 L42 50 Z" fill="#ef4444" />
+                    <path d="M20 50 L50 42 L80 50 L50 58 Z" fill="#333" />
+                    <circle cx="50" cy="50" r="5" fill="white" stroke="#ef4444" strokeWidth="2" />
+                  </svg>
+                  <span className="text-[10px] font-black mt-1 text-neutral-500 tracking-widest">COMPASS</span>
+                </div>
+              </div>
+
+              {/* ROAD INFO OVERLAY (Top Right) */}
+              {hoveredItem && hoveredItem.type === 'road' && (
+                <div className="absolute top-6 right-6 z-40 animate-in fade-in slide-in-from-right-4 duration-200 pointer-events-none">
+                  <div className="bg-white/95 backdrop-blur-md p-5 rounded-2xl shadow-2xl border-l-[6px] border-emerald-600 shadow-emerald-900/20 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700">
+                      <Road className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black text-emerald-600 tracking-widest uppercase mb-1">Road Details</div>
+                      <div className="text-xl font-black text-neutral-800 leading-none mb-1">
+                        {getRoadInfo(hoveredItem)?.name}
+                      </div>
+                      <div className="text-xs font-bold text-neutral-500 italic">
+                        {getRoadInfo(hoveredItem)?.size}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
+                <div 
+                  className="relative"
+                  onClick={(e) => {
+                    if (!editMode && e.target === e.currentTarget) {
+                      setSelectedPlot(null);
+                      onSelectPlot('', 0);
+                    }
+                  }}
+                  style={{ 
+                    width: `${gridSize.x * 37 + 3}px`,
+                    height: `${gridSize.y * 21 + 3}px`,
+                    backgroundColor: '#1e2328', 
+                    borderRadius: '4px',
+                  }}
+                >
           {editMode && backgroundCells.map(cell => (
              <div 
                key={`bg-${cell.x}-${cell.y}`}
-               onMouseUp={(e) => {
-                 if (!isDragging) handleEmptyClick(cell.x, cell.y);
+               onClick={(e) => handleEmptyClick(cell.x, cell.y)}
+               className="hover:bg-white/10 cursor-pointer transition-colors absolute"
+               style={{ 
+                 left: `${cell.x * 37 + 2}px`,
+                 top: `${cell.y * 21 + 2}px`,
+                 width: '36px',
+                 height: '20px'
                }}
-               className="hover:bg-white/10 cursor-pointer transition-colors"
-               style={{ gridColumn: cell.x + 1, gridRow: cell.y + 1 }}
              />
           ))}
 
@@ -524,12 +631,18 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
              if (item.type === 'road') {
                 bgClass = 'bg-[#3b424a]';
                 borderClass = '';
-                content = '';
+                content = item.label || '';
              } else if (item.type === 'park') {
                 bgClass = 'bg-[#4caf50]';
-                content = <Trees className="w-5 h-5 text-white/50" />;
+                content = (
+                  <div className="flex flex-col items-center justify-center">
+                    <Trees className="w-4 h-4 text-white/40 mb-0.5" />
+                    {item.label && <span className="text-[6px] md:text-[8px] uppercase font-black text-white/90 leading-tight text-center px-1">{item.label}</span>}
+                  </div>
+                );
              } else {
                 bgClass = getPlotColor(item.id);
+                content = item.label || item.id;
              }
 
              const selectionIndex = editMode ? selectedIds.indexOf(item.id) : -1;
@@ -539,16 +652,14 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
                   key={`${item.id}-${item.x}-${item.y}`}
                   onMouseEnter={() => setHoveredItem(item)}
                   onMouseLeave={() => setHoveredItem(null)}
-                  onMouseUp={(e) => {
-                    // Only trigger click if the mouse didn't move significantly (drag threshold: 10px)
-                    if (dragDistance < 10) {
-                      handleItemClick(item);
-                    }
-                  }}
+                  onClick={(e) => handleItemClick(item, e)}
                   title={item.type === 'road' ? '' : `${item.id} (${item.w}x${item.h})`}
                   style={{ 
-                    gridColumn: `${item.x + 1} / span ${item.w}`, 
-                    gridRow: `${item.y + 1} / span ${item.h}`,
+                    position: 'absolute',
+                    left: `${item.x * 37 + 2}px`,
+                    top: `${item.y * 21 + 2}px`,
+                    width: `${item.w * 37 - 1}px`,
+                    height: `${item.h * 21 - 1}px`,
                     backgroundColor: item.type === 'plot' && item.color ? item.color : undefined,
                     zIndex: isSelected ? 30 : (item.type === 'road' ? 5 : 10)
                   }}
@@ -570,6 +681,10 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
              );
           })}
         </div>
+              </TransformComponent>
+            </>
+          )}
+        </TransformWrapper>
       </div>
 
       {/* Editor Modal Overlay */}
@@ -613,6 +728,12 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
                        <option value="park">Park</option>
                     </select>
                  </div>
+                 
+                 <div>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Label / Display Name</label>
+                    <input type="text" placeholder="e.g. MAIN PARK" value={bulkConfig.label} onChange={e => setBulkConfig({...bulkConfig, label: e.target.value})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                 </div>
+
                  <div className="grid grid-cols-2 gap-4">
                    <div>
                        <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Width (Cells)</label>
@@ -662,6 +783,35 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
               <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-end gap-3">
                  <button onClick={() => setShowImportModal(false)} className="px-6 py-2 text-neutral-500 hover:text-black text-sm font-bold transition-colors">Cancel</button>
                  <button onClick={handleImport} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-2 text-sm font-bold flex items-center gap-2 transition-all shadow-md"><Save className="w-4 h-4"/> Import Data</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Break Modal */}
+      {showBreakModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95">
+              <div className="bg-neutral-100 p-4 border-b border-neutral-200 flex items-center justify-between">
+                 <h3 className="font-bold text-lg text-neutral-800 flex items-center gap-2"><Grid className="w-5 h-5 text-orange-500"/> Break Block</h3>
+                 <button onClick={() => setShowBreakModal(false)} className="text-neutral-500 hover:text-black"><X className="w-5 h-5"/></button>
+              </div>
+              <div className="p-6 space-y-4">
+                 <p className="text-xs text-neutral-500">Specify how many pieces to break the selected block(s) into.</p>
+                 <div className="grid grid-cols-2 gap-4">
+                   <div>
+                       <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Columns (X)</label>
+                       <input type="number" min="1" max="50" value={breakConfig.cols} onChange={e => setBreakConfig({...breakConfig, cols: Math.max(1, parseInt(e.target.value) || 1)})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                   </div>
+                   <div>
+                       <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Rows (Y)</label>
+                       <input type="number" min="1" max="50" value={breakConfig.rows} onChange={e => setBreakConfig({...breakConfig, rows: Math.max(1, parseInt(e.target.value) || 1)})} className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 outline-none"/>
+                   </div>
+                 </div>
+              </div>
+              <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-end gap-3">
+                 <button onClick={() => setShowBreakModal(false)} className="px-6 py-2 text-neutral-500 hover:text-black text-sm font-bold transition-colors">Cancel</button>
+                 <button onClick={executeBreak} className="bg-orange-500 hover:bg-orange-600 text-white rounded-lg px-6 py-2 text-sm font-bold flex items-center gap-2 transition-all shadow-md"><Grid className="w-4 h-4"/> Execute Break</button>
               </div>
            </div>
         </div>
