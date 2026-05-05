@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import PlotMap, { MapItem } from '../components/PlotMap';
+import PlotMapSVG from '../components/PlotMapSVG';
 import layoutMatrix from '../data/layoutMatrix.json';
 
 // Extracted Components
@@ -75,6 +75,10 @@ export default function Home() {
     }, 800);
   };
 
+  const handlePlotSelect = useCallback((id: string, sqft: number) => {
+    setSelectedPlot({ id, sqft, status: 'available' });
+  }, []);
+
   const handlePlotEnquire = (plotId: string) => {
     setFormData(prev => ({ ...prev, plot_interest: plotId }));
     setIsEnquiryModalOpen(true);
@@ -107,9 +111,8 @@ export default function Home() {
               <p className="text-neutral-600 max-w-2xl mx-auto text-lg">Explore our real project layout. Select an available plot to send an enquiry.</p>
             </div>
             
-            <PlotMap 
-              onSelectPlot={(id, sqft) => setSelectedPlot({ id, sqft, status: 'available' })} 
-              onDataChange={useCallback((data: MapItem[]) => setCurrentMapData(data), [])}
+            <PlotMapSVG 
+              onSelectPlot={handlePlotSelect} 
             />
           </div>
         </section>

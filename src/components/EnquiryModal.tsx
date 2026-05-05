@@ -21,8 +21,8 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden scale-100 transition-transform animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-md transition-opacity  ">
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden scale-100 transition-transform ">
         <div className="p-6 bg-emerald-800 text-white flex justify-between items-center">
           <div>
             <h3 className="text-xl font-bold">Enquire Now</h3>

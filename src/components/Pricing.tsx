@@ -41,7 +41,7 @@ export const Pricing: React.FC<PricingProps> = ({ onEnquireClick }) => {
             <ShieldCheck className="w-8 h-8 text-amber-400" />
           </div>
           <h3 className="text-2xl font-bold mb-4">Developed By</h3>
-          <div className="text-xl font-black text-white mb-2">Dream City Buildtech Pvt. Ltd.</div>
+          <div className="text-xl font-black text-white mb-2">Dream Park Buildtech Pvt. Ltd.</div>
           <p className="text-emerald-200 mb-6 leading-relaxed">
             Committed to delivering high-quality plotted developments with verified legal status and modern infrastructure.
           </p>

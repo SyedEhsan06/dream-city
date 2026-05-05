@@ -8,8 +8,13 @@ export const Header: React.FC<HeaderProps> = ({ onEnquireClick }) => {
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-neutral-200">
       <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-        <div className="text-2xl font-bold text-emerald-900 tracking-tight">
-          Dream City Buildtech
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-neutral-100 flex items-center justify-center p-1.5 overflow-hidden">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <div className="text-2xl font-bold text-emerald-900 tracking-tight">
+            Dream Park
+          </div>
         </div>
         <nav className="hidden md:flex gap-6 items-center font-medium text-sm text-neutral-600">
           <a href="#plots" className="hover:text-emerald-700 transition">Available Plots</a>
