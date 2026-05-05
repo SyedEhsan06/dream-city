@@ -297,7 +297,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
       <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6 p-4 md:p-8 bg-neutral-50 rounded-3xl border border-neutral-100 relative z-10 shadow-sm order-2 lg:order-1">
         
         {/* Editor Controls */}
-        {/* <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
+        <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
           <h3 className="font-bold text-sm text-blue-800 tracking-wider mb-3 uppercase flex items-center gap-2">
             <Edit3 className="w-4 h-4" /> Map Builder
           </h3>
@@ -370,7 +370,7 @@ export default function PlotMap({ onSelectPlot, onDataChange }: {
               </div>
             </>
           )}
-        </div> */}
+        </div>
         <div className="h-px bg-neutral-200"></div>
 
         <div>
