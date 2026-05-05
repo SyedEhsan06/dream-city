@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import PlotMapSVG from '../components/PlotMapSVG';
+import dynamic from 'next/dynamic';
 import layoutMatrix from '../data/layoutMatrix.json';
 
 // Extracted Components
@@ -16,6 +16,16 @@ import { Footer } from '../components/Footer';
 import { EnquiryModal } from '../components/EnquiryModal';
 import { PlotDetailsModal } from '../components/PlotDetailsModal';
 import { WhatsAppButton } from '../components/WhatsAppButton';
+
+const PlotMapSVG = dynamic(() => import('../components/PlotMapSVG'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[600px] bg-neutral-50 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 border border-neutral-100 shadow-inner">
+      <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+      <div className="text-neutral-400 font-black tracking-widest text-xs uppercase animate-pulse">Initializing Master Plan...</div>
+    </div>
+  )
+});
 
 export default function Home() {
   const [formData, setFormData] = useState({ name: '', phone: '', plot_interest: '' });
