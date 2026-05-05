@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, memo } from 'react';
 
 const PlotMapSVG = memo(({ onSelectPlot }: { onSelectPlot: (id: string, sqft: number) => void }) => {
+  const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const handleSvgClick = (event: React.MouseEvent) => {
@@ -56,9 +57,16 @@ const PlotMapSVG = memo(({ onSelectPlot }: { onSelectPlot: (id: string, sqft: nu
         
         // Apply type-based colors
         const id = plotId.toUpperCase();
-        if (id.startsWith('A') || id.startsWith('RA')) rect.classList.add('TYPE-A');
-        else if (id.startsWith('B') || id.startsWith('RB')) rect.classList.add('TYPE-B');
-        else if (id.startsWith('C') || id.startsWith('RC')) rect.classList.add('TYPE-C');
+        if (id.startsWith('A') || id.startsWith('RA')) {
+          rect.classList.add('TYPE-A');
+          text.classList.add('text-A');
+        } else if (id.startsWith('B') || id.startsWith('RB')) {
+          rect.classList.add('TYPE-B');
+          text.classList.add('text-B');
+        } else if (id.startsWith('C') || id.startsWith('RC')) {
+          rect.classList.add('TYPE-C');
+          text.classList.add('text-C');
+        }
       }
     });
     elementMap.current = map;
@@ -74,15 +82,25 @@ const PlotMapSVG = memo(({ onSelectPlot }: { onSelectPlot: (id: string, sqft: nu
           { type: 'B', area: '1800 SQ. FT.', dim: "36'-0\" X 50'-0\"", color: 'bg-[#f472b6] border-pink-500 text-white' },
           { type: 'C', area: '1200 SQ. FT.', dim: "30'-0\" X 40'-0\"", color: 'bg-[#38bdf8] border-sky-500 text-white' },
         ].map((item) => (
-          <div key={item.type} className="flex items-center gap-4 bg-neutral-50 p-4 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-            <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center font-black text-xl shrink-0 ${item.color}`}>
+          <button 
+            key={item.type} 
+            onClick={() => setActiveFilter(activeFilter === item.type ? null : item.type)}
+            className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer group ${
+              activeFilter === item.type 
+                ? 'bg-white border-emerald-500 shadow-lg ring-2 ring-emerald-500/20 -translate-y-1' 
+                : activeFilter 
+                  ? 'bg-neutral-50 border-neutral-100 opacity-40 grayscale scale-95'
+                  : 'bg-neutral-50 border-neutral-200 shadow-sm hover:shadow-md hover:-translate-y-1'
+            }`}
+          >
+            <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center font-black text-xl shrink-0 transition-transform ${item.color} ${activeFilter === item.type ? 'scale-110' : 'group-hover:scale-110'}`}>
               {item.type}
             </div>
-            <div>
+            <div className="text-left">
               <div className="text-sm font-black text-neutral-800">{item.area}</div>
               <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tight">{item.dim}</div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -104,6 +122,21 @@ const PlotMapSVG = memo(({ onSelectPlot }: { onSelectPlot: (id: string, sqft: nu
         #plots-svg rect.TYPE-A { fill: #fb7185 !important; }
         #plots-svg rect.TYPE-B { fill: #f472b6 !important; }
         #plots-svg rect.TYPE-C { fill: #38bdf8 !important; }
+
+        /* Filtering Logic */
+        #plots-svg.filtering-A rect:not(.TYPE-A),
+        #plots-svg.filtering-B rect:not(.TYPE-B),
+        #plots-svg.filtering-C rect:not(.TYPE-C) {
+          opacity: 0.1;
+          filter: grayscale(80%);
+        }
+
+        #plots-svg.filtering-A text:not(.text-A),
+        #plots-svg.filtering-B text:not(.text-B),
+        #plots-svg.filtering-C text:not(.text-C) {
+          opacity: 0.05;
+        }
+
         .textSVG {
           fill: white;
           font-size: 1.5px;
@@ -129,6 +162,7 @@ const PlotMapSVG = memo(({ onSelectPlot }: { onSelectPlot: (id: string, sqft: nu
             width="1200"
             height="1890"
             style={{ display: "block", margin: "0 auto" }}
+            className={`transition-all duration-500 ${activeFilter ? `filtering-${activeFilter}` : ''}`}
           >
             
             
