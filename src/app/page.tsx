@@ -73,16 +73,37 @@ export default function Home() {
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormStatus('submitting');
-    // Mock lead capture
-    setTimeout(() => {
+    
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://168.144.31.85/api';
+      const response = await fetch(`${apiUrl}/leads`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: process.env.NEXT_PUBLIC_PROJECT_ID || '44bf0de8-c797-403b-a7cb-69c7f9ee171e',
+          name: formData.name,
+          phone: formData.phone,
+          plotInterest: formData.plot_interest,
+          source: 'website_contact',
+          leadType: formData.plot_interest ? 'plot_enquiry' : 'enquiry',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to submit');
+
       setFormStatus('success');
       setTimeout(() => {
         setFormStatus('idle');
         setIsEnquiryModalOpen(false);
         setFormData({ name: '', phone: '', plot_interest: '' });
       }, 2000);
-      console.log("Mock lead captured:", formData);
-    }, 800);
+    } catch (err) {
+      console.error("Lead capture failed:", err);
+      setFormStatus('idle');
+      alert("Something went wrong. Please try again or contact us via WhatsApp.");
+    }
   };
 
   const handlePlotSelect = useCallback((id: string, sqft: number) => {
