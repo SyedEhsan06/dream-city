@@ -3,7 +3,7 @@ import React from 'react';
 export const FAQ: React.FC = () => {
   const faqs = [
     { q: "Is the project legally verified?", a: "Yes, Dream Park Bettiah has 100% clear titles and all necessary approvals from the local authorities. You can review the papers anytime." },
-    { q: "Are bank loans available?", a: "Yes, we have tie-ups with leading nationalized and private banks to offer easy EMI and loan facilities for plots." },
+    { q: "Do you offer installment plans?", a: "Yes, we offer flexible installment plans to make it easier for you to invest. Contact our sales team for personalized options." },
     { q: "When can I start construction?", a: "You can start construction immediately after the registry! The basic infrastructure like roads and plot marking is already in place." },
     { q: "What is the booking amount?", a: "You can secure your plot with a nominal booking amount. Contact our sales team using the form below to get the exact payment schedule." }
   ];

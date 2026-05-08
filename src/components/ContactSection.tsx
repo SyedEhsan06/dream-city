@@ -58,7 +58,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
               allowFullScreen={false} 
               loading="lazy" 
               referrerPolicy="no-referrer-when-downgrade"
-              className="grayscale-[30%] opacity-90 mix-blend-luminosity hover:grayscale-0 hover:opacity-100 hover:mix-blend-normal transition duration-500"
+              className=""
             ></iframe>
           </div>
         </div>
