@@ -53,7 +53,7 @@ export default function PlotsPage() {
               Interactive Master Plan
             </h1>
             <p className="text-xl text-neutral-600 max-w-3xl mx-auto leading-relaxed">
-              Explore the complete layout of Dream City Bettiah. Use the legend to filter by plot size and select any plot to enquire about availability and pricing.
+              Explore the complete layout of Dream Park Bettiah. Use the legend to filter by plot size and select any plot to enquire about availability and pricing.
             </p>
           </div>
 

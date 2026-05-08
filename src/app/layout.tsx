@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dream City Bettiah | Premium Residential Plots & Site Plan",
-  description: "Experience luxury living at Dream City Bettiah. View our interactive master plan, explore premium residential plots, and secure your property in Bettiah's most prestigious project.",
-  keywords: ["Dream City Bettiah", "Residential Plots Bettiah", "Plot Booking Bettiah", "Dream Park Buildtech", "Real Estate Bihar"],
+  title: "Dream <Park></Park> Bettiah | Premium Residential Plots & Site Plan",
+  description: "Experience luxury living at Dream Park Bettiah. View our interactive master plan, explore premium residential plots, and secure your property in Bettiah's most prestigious project.",
+  keywords: ["Dream Park Bettiah", "Residential Plots Bettiah", "Plot Booking Bettiah", "Dream Park Buildtech", "Real Estate Bihar"],
   authors: [{ name: "Dream Park Buildtech" }],
   viewport: "width=device-width, initial-scale=1",
   icons: {
