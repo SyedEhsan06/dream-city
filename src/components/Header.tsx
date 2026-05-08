@@ -12,18 +12,18 @@ export const Header: React.FC<HeaderProps> = ({ onEnquireClick }) => {
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-neutral-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <a href="/" className="flex items-center gap-4 group">
-            <div className="w-14 h-14 bg-white rounded-xl shadow-sm border border-neutral-100 flex items-center justify-center p-2 overflow-hidden group-hover:border-emerald-200 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-8">
+          <a href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-neutral-100 flex items-center justify-center p-1.5 overflow-hidden group-hover:border-emerald-200 transition-colors">
               <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
-            <div className="text-3xl font-extrabold text-emerald-900 tracking-tight uppercase group-hover:text-emerald-700 transition-colors">
+            <div className="text-xl font-black text-emerald-900 tracking-tighter uppercase group-hover:text-emerald-700 transition-colors">
               DREAM PARK
             </div>
           </a>
 
-          <nav className="hidden lg:flex gap-8 items-center font-bold text-sm text-neutral-500 uppercase tracking-wider">
+          <nav className="hidden lg:flex gap-8 items-center font-bold text-[13px] text-neutral-500 uppercase tracking-wider">
             <a href="/" className={`hover:text-emerald-700 transition-colors ${pathname === '/' ? 'text-emerald-700' : ''}`}>
               Home
             </a>
