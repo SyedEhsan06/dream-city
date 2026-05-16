@@ -63,10 +63,18 @@ export const Header: React.FC<HeaderProps> = ({ onEnquireClick }) => {
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <a 
+            href="https://crm.dreampark.co.in/" 
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-neutral-600 hover:text-emerald-700 font-bold text-[10px] sm:text-sm transition-colors px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border border-neutral-200 hover:border-emerald-200 hover:bg-emerald-50 whitespace-nowrap"
+          >
+            Login
+          </a>
           <button 
             onClick={onEnquireClick}
-            className="bg-emerald-700 text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-emerald-800 transition-all hover:shadow-lg hover:shadow-emerald-700/20 active:scale-95"
+            className="bg-emerald-700 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full font-bold text-[10px] sm:text-sm hover:bg-emerald-800 transition-all hover:shadow-lg hover:shadow-emerald-700/20 active:scale-95 whitespace-nowrap"
           >
             Enquire Now
           </button>

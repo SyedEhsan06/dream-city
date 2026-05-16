@@ -32,6 +32,29 @@ export const Amenities: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <div className="max-w-[1400px] mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-16">
+          <div className="bg-white p-2 border border-neutral-200 shadow-sm">
+            <div className="relative aspect-[16/10] overflow-hidden">
+              <img 
+                src="/img1.jpeg" 
+                alt="Dream City Project View" 
+                className="w-full h-full object-cover block"
+              />
+            </div>
+          </div>
+          <div className="bg-white p-2 border border-neutral-200 shadow-sm">
+            <div className="relative aspect-[16/10] overflow-hidden">
+              <img 
+                src="/img2.jpeg" 
+                alt="Dream City Landscape" 
+                className="w-full h-full object-cover block"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 };
