@@ -126,7 +126,10 @@ export default function Home() {
 
         <QuickFind 
           searchSqft={searchSqft}
-          setSearchSqft={setSearchSqft}
+          setSearchSqft={(val) => {
+            setSearchSqft(val);
+            setSearchResult(null);
+          }}
           searchResult={searchResult}
           handleSearch={handleSearch}
           setIsEnquiryModalOpen={() => setIsEnquiryModalOpen(true)}
