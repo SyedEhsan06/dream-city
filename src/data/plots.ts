@@ -1816,5 +1816,5 @@ export const REAL_PLOTS = [
   "RC-327",
   "RC-328",
   "RC-329",
-  "RC-330"
+  "RC-330",
 ];

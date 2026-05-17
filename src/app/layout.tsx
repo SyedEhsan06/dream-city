@@ -20,12 +20,23 @@ export const viewport = {
 
 export const metadata: Metadata = {
   title: "Dream Park Bettiah | Premium Residential Plots & Site Plan",
-  description: "Experience luxury living at Dream Park Bettiah. View our interactive master plan, explore premium residential plots, and secure your property in Bettiah's most prestigious project.",
-  keywords: ["Dream Park Bettiah", "Residential Plots Bettiah", "Plot Booking Bettiah", "Dream Park Buildtech", "Real Estate Bihar"],
-  authors: [{ name: "Dream Park Buildtech" }],
+  description:
+    "Experience luxury living at Dream Park Bettiah. View our interactive master plan, explore premium residential plots, and secure your property in Bettiah's most prestigious project.",
+  keywords: [
+    "Dream Park Bettiah",
+    "Residential Plots Bettiah",
+    "Plot Booking Bettiah",
+    "Dream Park Buildtech",
+    "Real Estate Bihar",
+  ],
+  authors: [
+    { name: "Dream Park Buildtech" },
+    { name: "Syd Innovations", url: "https://sydinnovations.com" },
+  ],
   openGraph: {
     title: "Dream Park Bettiah | Premium Residential Plots",
-    description: "Experience luxury living at Dream Park Bettiah. View our interactive master plan and explore premium residential plots.",
+    description:
+      "Experience luxury living at Dream Park Bettiah. View our interactive master plan and explore premium residential plots.",
     url: "https://dreamparkbettiah.com",
     siteName: "Dream Park Bettiah",
     images: [
@@ -42,13 +53,14 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Dream Park Bettiah | Premium Residential Plots",
-    description: "Experience luxury living at Dream Park Bettiah. Explore our premium residential plots.",
+    description:
+      "Experience luxury living at Dream Park Bettiah. Explore our premium residential plots.",
     images: ["/logo.png"],
   },
   icons: {
     icon: "/favicon.ico",
     apple: "/favicon.ico",
-  }
+  },
 };
 
 export default function RootLayout({

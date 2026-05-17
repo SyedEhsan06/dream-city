@@ -1,130 +1,148 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
-import dynamic from 'next/dynamic';
-import layoutMatrix from '../data/layoutMatrix.json';
+import React, { useState, useCallback } from "react";
+import dynamic from "next/dynamic";
+import layoutMatrix from "../data/layoutMatrix.json";
 
 // Extracted Components
-import { Header } from '../components/Header';
-import { Hero } from '../components/Hero';
-import { QuickFind } from '../components/QuickFind';
-import { Amenities } from '../components/Amenities';
-import { Pricing } from '../components/Pricing';
-import { FAQ } from '../components/FAQ';
-import { ContactSection } from '../components/ContactSection';
-import { Footer } from '../components/Footer';
-import { EnquiryModal } from '../components/EnquiryModal';
-import { PlotDetailsModal } from '../components/PlotDetailsModal';
-import { WhatsAppButton } from '../components/WhatsAppButton';
+import { Header } from "../components/Header";
+import { Hero } from "../components/Hero";
+import { QuickFind } from "../components/QuickFind";
+import { Amenities } from "../components/Amenities";
+import { Pricing } from "../components/Pricing";
+import { FAQ } from "../components/FAQ";
+import { ContactSection } from "../components/ContactSection";
+import { Footer } from "../components/Footer";
+import { EnquiryModal } from "../components/EnquiryModal";
+import { PlotDetailsModal } from "../components/PlotDetailsModal";
+import { WhatsAppButton } from "../components/WhatsAppButton";
 
-const PlotMapSVG = dynamic(() => import('../components/PlotMapSVG'), {
+const PlotMapSVG = dynamic(() => import("../components/PlotMapSVG"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-[600px] bg-neutral-50 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 border border-neutral-100 shadow-inner">
       <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-      <div className="text-neutral-400 font-black tracking-widest text-xs uppercase animate-pulse">Initializing Master Plan...</div>
+      <div className="text-neutral-400 font-black tracking-widest text-xs uppercase animate-pulse">
+        Initializing Master Plan...
+      </div>
     </div>
-  )
+  ),
 });
 
 export default function Home() {
-  const [formData, setFormData] = useState({ name: '', phone: '', plot_interest: '' });
-  const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    plot_interest: "",
+  });
+  const [formStatus, setFormStatus] = useState<
+    "idle" | "submitting" | "success"
+  >("idle");
   const [selectedPlot, setSelectedPlot] = useState<any>(null);
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
-  
+
   // Search State
-  const [searchSqft, setSearchSqft] = useState<string>('');
-  const [searchResult, setSearchResult] = useState<{ count: number, message: string } | null>(null);
+  const [searchSqft, setSearchSqft] = useState<string>("");
+  const [searchResult, setSearchResult] = useState<{
+    count: number;
+    message: string;
+  } | null>(null);
   const [currentMapData, setCurrentMapData] = useState<any[]>(layoutMatrix);
 
   const handleSearch = () => {
     if (!searchSqft) {
-      setSearchResult({ count: 0, message: 'Please enter a minimum area in square feet.' });
+      setSearchResult({
+        count: 0,
+        message: "Please enter a minimum area in square feet.",
+      });
       return;
     }
     const sqft = parseInt(searchSqft);
     if (isNaN(sqft) || sqft <= 0) {
-      setSearchResult({ count: 0, message: 'Invalid area entered.' });
+      setSearchResult({ count: 0, message: "Invalid area entered." });
       return;
     }
-    
+
     let count = 0;
     currentMapData.forEach((item: any) => {
-      const isPlot = item.type && item.type.toLowerCase() === 'plot';
+      const isPlot = item.type && item.type.toLowerCase() === "plot";
       if (isPlot && item.id) {
         const id = item.id.toUpperCase();
         let plotSqft = 0;
-        
-        if (id.startsWith('A') || id.startsWith('RA')) plotSqft = 2700;
-        else if (id.startsWith('B') || id.startsWith('RB')) plotSqft = 1800;
-        else if (id.startsWith('C') || id.startsWith('RC')) plotSqft = 1200;
+
+        if (id.startsWith("A") || id.startsWith("RA")) plotSqft = 2700;
+        else if (id.startsWith("B") || id.startsWith("RB")) plotSqft = 1800;
+        else if (id.startsWith("C") || id.startsWith("RC")) plotSqft = 1200;
         else plotSqft = 1000;
-        
+
         if (plotSqft >= sqft) {
           count++;
         }
       }
     });
 
-    setSearchResult({ count, message: '' });
+    setSearchResult({ count, message: "" });
   };
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormStatus('submitting');
-    
+    setFormStatus("submitting");
+
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://168.144.31.85/api';
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://168.144.31.85/api";
       const response = await fetch(`${apiUrl}/leads`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          projectId: process.env.NEXT_PUBLIC_PROJECT_ID || '44bf0de8-c797-403b-a7cb-69c7f9ee171e',
+          projectId:
+            process.env.NEXT_PUBLIC_PROJECT_ID ||
+            "44bf0de8-c797-403b-a7cb-69c7f9ee171e",
           name: formData.name,
           phone: formData.phone,
           plotInterest: formData.plot_interest,
-          source: 'website_contact',
-          leadType: formData.plot_interest ? 'plot_enquiry' : 'enquiry',
+          source: "website_contact",
+          leadType: formData.plot_interest ? "plot_enquiry" : "enquiry",
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to submit');
+      if (!response.ok) throw new Error("Failed to submit");
 
-      setFormStatus('success');
+      setFormStatus("success");
       setTimeout(() => {
-        setFormStatus('idle');
+        setFormStatus("idle");
         setIsEnquiryModalOpen(false);
-        setFormData({ name: '', phone: '', plot_interest: '' });
+        setFormData({ name: "", phone: "", plot_interest: "" });
       }, 2000);
     } catch (err) {
       console.error("Lead capture failed:", err);
-      setFormStatus('idle');
-      alert("Something went wrong. Please try again or contact us via WhatsApp.");
+      setFormStatus("idle");
+      alert(
+        "Something went wrong. Please try again or contact us via WhatsApp.",
+      );
     }
   };
 
   const handlePlotSelect = useCallback((id: string, sqft: number) => {
-    setSelectedPlot({ id, sqft, status: 'available' });
+    setSelectedPlot({ id, sqft, status: "available" });
   }, []);
 
   const handlePlotEnquire = (plotId: string) => {
-    setFormData(prev => ({ ...prev, plot_interest: plotId }));
+    setFormData((prev) => ({ ...prev, plot_interest: plotId }));
     setIsEnquiryModalOpen(true);
     setSelectedPlot(null);
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900 selection:bg-emerald-200">
-      
       <Header onEnquireClick={() => setIsEnquiryModalOpen(true)} />
 
       <main>
         <Hero onEnquireClick={() => setIsEnquiryModalOpen(true)} />
 
-        <QuickFind 
+        <QuickFind
           searchSqft={searchSqft}
           setSearchSqft={(val) => {
             setSearchSqft(val);
@@ -138,16 +156,22 @@ export default function Home() {
         <Amenities />
 
         {/* INTERACTIVE PLOT MAP */}
-        <section id="plots" className="py-24 px-4 sm:px-6 bg-neutral-100 border-y border-neutral-200 overflow-hidden">
+        <section
+          id="plots"
+          className="py-24 px-4 sm:px-6 bg-neutral-100 border-y border-neutral-200 overflow-hidden"
+        >
           <div className="max-w-[1400px] mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-5xl font-black text-neutral-900 mb-4 tracking-tight">Master Plan & Plot Availability</h2>
-              <p className="text-neutral-600 max-w-2xl mx-auto text-lg">Explore our real project layout. Select an available plot to send an enquiry.</p>
+              <h2 className="text-3xl md:text-5xl font-black text-neutral-900 mb-4 tracking-tight">
+                Master Plan & Plot Availability
+              </h2>
+              <p className="text-neutral-600 max-w-2xl mx-auto text-lg">
+                Explore our real project layout. Select an available plot to
+                send an enquiry.
+              </p>
             </div>
-            
-            <PlotMapSVG 
-              onSelectPlot={handlePlotSelect} 
-            />
+
+            <PlotMapSVG onSelectPlot={handlePlotSelect} />
           </div>
         </section>
 
@@ -155,7 +179,7 @@ export default function Home() {
 
         <FAQ />
 
-        <ContactSection 
+        <ContactSection
           formData={formData}
           setFormData={setFormData}
           handleLeadSubmit={handleLeadSubmit}
@@ -165,13 +189,13 @@ export default function Home() {
 
       <Footer />
 
-      <PlotDetailsModal 
+      <PlotDetailsModal
         selectedPlot={selectedPlot}
         onClose={() => setSelectedPlot(null)}
         onEnquire={handlePlotEnquire}
       />
 
-      <EnquiryModal 
+      <EnquiryModal
         isOpen={isEnquiryModalOpen}
         onClose={() => setIsEnquiryModalOpen(false)}
         formData={formData}

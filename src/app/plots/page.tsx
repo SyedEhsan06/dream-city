@@ -1,43 +1,53 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 import { Header } from "../../components/Header";
 import { EnquiryModal } from "../../components/EnquiryModal";
+import { Footer } from "../../components/Footer";
+import { WhatsAppButton } from "../../components/WhatsAppButton";
 
-const PlotMapSVG = dynamic(() => import('../../components/PlotMapSVG'), {
+const PlotMapSVG = dynamic(() => import("../../components/PlotMapSVG"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-[600px] bg-neutral-50 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 border border-neutral-100 shadow-inner">
       <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-      <div className="text-neutral-400 font-black tracking-widest text-xs uppercase animate-pulse">Initializing Master Plan...</div>
+      <div className="text-neutral-400 font-black tracking-widest text-xs uppercase animate-pulse">
+        Initializing Master Plan...
+      </div>
     </div>
-  )
+  ),
 });
 
 export default function PlotsPage() {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', phone: '', plot_interest: '' });
-  const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    plot_interest: "",
+  });
+  const [formStatus, setFormStatus] = useState<
+    "idle" | "submitting" | "success"
+  >("idle");
 
   const handlePlotSelect = useCallback((id: string, sqft: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      plot_interest: `${id} (${sqft} sqft)`
+      plot_interest: `${id} (${sqft} sqft)`,
     }));
     setIsEnquiryModalOpen(true);
   }, []);
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormStatus('submitting');
+    setFormStatus("submitting");
     // Simulate API call
     setTimeout(() => {
-      setFormStatus('success');
+      setFormStatus("success");
       setTimeout(() => {
-        setFormStatus('idle');
+        setFormStatus("idle");
         setIsEnquiryModalOpen(false);
-        setFormData({ name: '', phone: '', plot_interest: '' });
+        setFormData({ name: "", phone: "", plot_interest: "" });
       }, 2000);
     }, 1000);
   };
@@ -45,7 +55,7 @@ export default function PlotsPage() {
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
       <Header onEnquireClick={() => setIsEnquiryModalOpen(true)} />
-      
+
       <main className="flex-1 py-12 px-4 sm:px-6">
         <div className="max-w-[1400px] mx-auto">
           <div className="text-center mb-12">
@@ -53,7 +63,9 @@ export default function PlotsPage() {
               Interactive Master Plan
             </h1>
             <p className="text-xl text-neutral-600 max-w-3xl mx-auto leading-relaxed">
-              Explore the complete layout of Dream Park Bettiah. Use the legend to filter by plot size and select any plot to enquire about availability and pricing.
+              Explore the complete layout of Dream Park Bettiah. Use the legend
+              to filter by plot size and select any plot to enquire about
+              availability and pricing.
             </p>
           </div>
 
@@ -63,7 +75,9 @@ export default function PlotsPage() {
         </div>
       </main>
 
-      <EnquiryModal 
+      <Footer />
+
+      <EnquiryModal
         isOpen={isEnquiryModalOpen}
         onClose={() => setIsEnquiryModalOpen(false)}
         formData={formData}
@@ -71,6 +85,8 @@ export default function PlotsPage() {
         handleLeadSubmit={handleLeadSubmit}
         formStatus={formStatus}
       />
+
+      <WhatsAppButton />
     </div>
   );
 }
