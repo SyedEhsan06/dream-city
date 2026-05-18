@@ -36,6 +36,9 @@ export type MapItem = {
   label?: string;
 };
 
+type PlotStatus = 'booked' | 'reserved' | 'sold' | 'cancelled';
+type UnavailablePlot = { plotNumber: string; status: PlotStatus };
+
 export default function PlotMap({
   onSelectPlot,
   onDataChange,
@@ -45,6 +48,23 @@ export default function PlotMap({
 }) {
   const [selectedPlot, setSelectedPlot] = useState<string | null>(null);
   const transformComponentRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const [unavailablePlots, setUnavailablePlots] = useState<Map<string, PlotStatus>>(new Map());
+
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
+    if (!apiUrl || !projectId) return;
+    fetch(`${apiUrl}/plots/public/availability?projectId=${projectId}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data)) {
+          const map = new Map<string, PlotStatus>();
+          (json.data as UnavailablePlot[]).forEach((p) => map.set(p.plotNumber, p.status));
+          setUnavailablePlots(map);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [gridSize, setGridSize] = useState({ x: 40, y: 80 });
   const [isLocked, setIsLocked] = useState(false);
@@ -644,7 +664,22 @@ export default function PlotMap({
                 </div>
               </div>
             ))}
+            {/* Booked legend */}
+            <div className="flex items-center gap-3 bg-white p-2 md:p-3 rounded-2xl border border-neutral-100 shadow-sm">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl border-2 border-gray-400 bg-[#6b7280] flex items-center justify-center font-black text-lg md:text-xl shrink-0 text-white">
+                🔒
+              </div>
+              <div>
+                <div className="text-sm font-black text-neutral-800">BOOKED</div>
+                <div className="text-[10px] font-bold text-neutral-400">Not available</div>
+              </div>
+            </div>
           </div>
+          {unavailablePlots.size > 0 && (
+            <div className="text-[10px] text-center text-neutral-400 mt-2">
+              <span className="font-black text-gray-600">{unavailablePlots.size}</span> plots sold/booked
+            </div>
+          )}
         </div>
       </div>
 
@@ -822,10 +857,25 @@ export default function PlotMap({
                         </div>
                       );
                     } else {
-                      bgClass = getPlotColor(item.id);
-                      content = item.label || item.id;
+                      const plotStatus = unavailablePlots.get(item.id);
+                      if (plotStatus && item.type === "plot") {
+                        bgClass = "bg-[#6b7280] text-white border-gray-500";
+                        content = (
+                          <div className="flex flex-col items-center justify-center leading-tight">
+                            <span className="whitespace-nowrap px-0.5 text-[7px] opacity-60 line-through">{item.id}</span>
+                            <span className="text-[6.5px] font-black uppercase tracking-tight text-white/90">
+                              {plotStatus === 'booked' ? '🔒 SOLD' : plotStatus === 'reserved' ? '⏳ RSVD' : plotStatus.toUpperCase()}
+                            </span>
+                          </div>
+                        );
+                      } else {
+                        bgClass = getPlotColor(item.id);
+                        content = item.label || item.id;
+                      }
                     }
 
+                    const plotStatus = item.type === "plot" ? unavailablePlots.get(item.id) : undefined;
+                    const isUnavailable = !!plotStatus && !editMode;
                     const selectionIndex = editMode
                       ? selectedIds.indexOf(item.id)
                       : -1;
@@ -835,10 +885,13 @@ export default function PlotMap({
                         key={`${item.id}-${item.x}-${item.y}`}
                         onMouseEnter={() => setHoveredItem(item)}
                         onMouseLeave={() => setHoveredItem(null)}
-                        onClick={(e) => handleItemClick(item, e)}
+                        onClick={(e) => isUnavailable ? undefined : handleItemClick(item, e)}
+                        disabled={isUnavailable && !editMode}
                         title={
                           item.type === "road"
                             ? ""
+                            : isUnavailable
+                            ? `${item.id} — ${plotStatus}`
                             : `${item.id} (${item.w}x${item.h})`
                         }
                         style={{
@@ -848,7 +901,7 @@ export default function PlotMap({
                           width: `${item.w * 37 - 1}px`,
                           height: `${item.h * 21 - 1}px`,
                           backgroundColor:
-                            item.type === "plot" && item.color
+                            item.type === "plot" && item.color && !isUnavailable
                               ? item.color
                               : undefined,
                           zIndex: isSelected
@@ -856,10 +909,11 @@ export default function PlotMap({
                             : item.type === "road"
                               ? 5
                               : 10,
+                          cursor: isUnavailable ? "not-allowed" : undefined,
                         }}
                         className={`flex items-center justify-center text-[8.5px] font-bold transition-all relative overflow-hidden
                     ${bgClass} ${borderClass}
-                    ${isSelected ? "ring-2 ring-yellow-400 brightness-110 scale-[1.15] shadow-xl z-30" : "hover:brightness-110"}
+                    ${isSelected ? "ring-2 ring-yellow-400 brightness-110 scale-[1.15] shadow-xl z-30" : isUnavailable ? "" : "hover:brightness-110"}
                     ${item.type === "road" ? "hover:scale-[1.01] hover:brightness-125 z-10" : ""}
                     ${editMode ? "hover:ring-1 hover:ring-white" : ""}
                   `}

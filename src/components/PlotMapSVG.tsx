@@ -4,6 +4,31 @@ const PlotMapSVG = memo(
   ({ onSelectPlot }: { onSelectPlot: (id: string, sqft: number) => void }) => {
     const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
+    const bookedPlots = useRef<Set<string>>(new Set());
+
+    // Fetch booked/sold plots from CRM — only the IDs that are unavailable
+    useEffect(() => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
+      if (!apiUrl || !projectId) return;
+      fetch(`${apiUrl}/plots/public/availability?projectId=${projectId}`)
+        .then((r) => r.json())
+        .then((json) => {
+          if (json.success && Array.isArray(json.data)) {
+            const set = new Set<string>(json.data.map((p: { plotNumber: string }) => p.plotNumber));
+            bookedPlots.current = set;
+            // Apply BOOKED class to already-indexed rects
+            set.forEach((id) => {
+              const rect = elementMap.current.get(id);
+              if (rect) {
+                rect.classList.add("BOOKED");
+                rect.style.cursor = "not-allowed";
+              }
+            });
+          }
+        })
+        .catch(() => {});
+    }, []);
 
     const handleSvgClick = (event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -23,6 +48,9 @@ const PlotMapSVG = memo(
       }
 
       if (!plotId) return;
+
+      // Block clicks on booked/sold plots
+      if (bookedPlots.current.has(plotId)) return;
 
       // Direct DOM manipulation for ultra-fast selection feedback
       const svg = svgRef.current;
@@ -71,6 +99,11 @@ const PlotMapSVG = memo(
             rect.classList.add("TYPE-C");
             text.classList.add("text-C");
           }
+          // Apply booked state if fetch already completed
+          if (bookedPlots.current.has(plotId)) {
+            rect.classList.add("BOOKED");
+            rect.style.cursor = "not-allowed";
+          }
         }
       });
       elementMap.current = map;
@@ -79,7 +112,7 @@ const PlotMapSVG = memo(
     return (
       <div className="relative w-full overflow-x-auto bg-white rounded-2xl shadow-xl border border-neutral-200 p-4 md:p-8 min-h-[600px] flex flex-col items-center justify-center">
         {/* PLOT LEGEND - MOVED TO TOP */}
-        <div className="mb-10 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-4xl px-4 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="mb-10 grid grid-cols-2 sm:grid-cols-4 gap-4 w-full max-w-4xl px-4 animate-in fade-in slide-in-from-top-4 duration-500">
           {[
             {
               type: "A",
@@ -128,6 +161,16 @@ const PlotMapSVG = memo(
               </div>
             </button>
           ))}
+          {/* Booked legend — non-interactive */}
+          <div className="flex items-center gap-4 p-4 rounded-2xl border bg-neutral-50 border-neutral-200 shadow-sm">
+            <div className="w-12 h-12 rounded-xl border-2 border-gray-500 bg-[#6b7280] flex items-center justify-center font-black text-xl shrink-0 text-white">
+              🔒
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-black text-neutral-800">BOOKED</div>
+              <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tight">Not available</div>
+            </div>
+          </div>
         </div>
 
         <style
@@ -150,6 +193,8 @@ const PlotMapSVG = memo(
         #plots-svg rect.TYPE-A { fill: #fb7185 !important; }
         #plots-svg rect.TYPE-B { fill: #f472b6 !important; }
         #plots-svg rect.TYPE-C { fill: #38bdf8 !important; }
+        #plots-svg rect.BOOKED { fill: #6b7280 !important; cursor: not-allowed !important; }
+        #plots-svg rect.BOOKED:hover { fill: #4b5563 !important; }
 
         /* Filtering Logic */
         #plots-svg.filtering-A rect:not(.TYPE-A),
