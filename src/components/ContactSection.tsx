@@ -53,7 +53,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                   <div className="text-sm text-emerald-300 font-medium tracking-wide">
                     Call Us Directly
                   </div>
-                  <div className="font-bold text-xl">+91 98765 43210</div>
+                  <a href="tel:+919508724886" className="font-bold text-xl hover:text-amber-300 transition-colors">+91 95087 24886</a>
                 </div>
               </div>
             </div>
