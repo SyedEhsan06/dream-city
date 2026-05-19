@@ -15,11 +15,11 @@ export const Footer: React.FC = () => {
           </div>
         </div>
         <address className="mb-8 max-w-md mx-auto leading-relaxed not-italic">
-          2nd Floor, ManshaTola, Murtuza Manzil,
+          C/o Murtuza Manzil, Ward No- 32,
           <br />
-          Bettiah - Motihari Rd, Banuchapar,
+          Mansha Tola, NH-727,
           <br />
-          Bettiah, Tola Mansaraut, Bihar 845438
+          Bettiah, West Champaran, Bihar 845438
         </address>
         <div className="text-sm flex flex-col md:flex-row items-center justify-center gap-2 mt-4 text-neutral-500">
           <span>

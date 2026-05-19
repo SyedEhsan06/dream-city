@@ -163,7 +163,7 @@ const PlotMapSVG = memo(
           ))}
           {/* Booked legend — non-interactive */}
           <div className="flex items-center gap-4 p-4 rounded-2xl border bg-neutral-50 border-neutral-200 shadow-sm">
-            <div className="w-12 h-12 rounded-xl border-2 border-gray-500 bg-[#6b7280] flex items-center justify-center font-black text-xl shrink-0 text-white">
+            <div className="w-12 h-12 rounded-xl border-2 border-red-800 bg-[#991b1b] flex items-center justify-center font-black text-xl shrink-0 text-white">
               🔒
             </div>
             <div className="text-left">
@@ -193,8 +193,8 @@ const PlotMapSVG = memo(
         #plots-svg rect.TYPE-A { fill: #fb7185 !important; }
         #plots-svg rect.TYPE-B { fill: #f472b6 !important; }
         #plots-svg rect.TYPE-C { fill: #38bdf8 !important; }
-        #plots-svg rect.BOOKED { fill: #6b7280 !important; cursor: not-allowed !important; }
-        #plots-svg rect.BOOKED:hover { fill: #4b5563 !important; }
+        #plots-svg rect.BOOKED { fill: #991b1b !important; cursor: not-allowed !important; }
+        #plots-svg rect.BOOKED:hover { fill: #7f1d1d !important; }
 
         /* Filtering Logic */
         #plots-svg.filtering-A rect:not(.TYPE-A),

@@ -37,11 +37,11 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                     Our Location
                   </div>
                   <div className="font-medium text-emerald-50 leading-relaxed">
-                    2nd Floor, ManshaTola, Murtuza Manzil,
+                    C/o Murtuza Manzil, Ward No- 32,
                     <br />
-                    Bettiah - Motihari Rd, Banuchapar,
+                    Mansha Tola, NH-727,
                     <br />
-                    Bettiah, Tola Mansaraut, Bihar 845438
+                    Bettiah, West Champaran, Bihar 845438
                   </div>
                 </div>
               </div>
@@ -63,7 +63,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
           <div className="h-72 w-full bg-emerald-900 relative">
             <div className="absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-emerald-800 to-transparent z-10 pointer-events-none"></div>
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3548.868725843477!2d84.5382552!3d26.8017159!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39936902445fbcbb%3A0x899229c0b9860ad2!2sDream%20City%20Buildtech%20Pvt.%20Ltd.!5e0!3m2!1sen!2sin!4v1714815456789!5m2!1sen!2sin"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14197.35905260193!2d84.5473799!3d26.7988686!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x5c0b77f6553857b%3A0xc44ccae34041f233!2sDream%20Park%20Buildtech%20Pvt%20Ltd!5e0!3m2!1sen!2sin!4v1716100000000!5m2!1sen!2sin"
               width="100%"
               height="100%"
               style={{ border: 0 }}
