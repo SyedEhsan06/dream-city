@@ -1,13 +1,19 @@
 import React from "react";
 import { X, CheckCircle2 } from "lucide-react";
 
+export interface EnquiryFormData {
+  name: string;
+  phone: string;
+  email: string;
+  message: string;
+  plot_interest: string;
+}
+
 interface EnquiryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  formData: { name: string; phone: string; plot_interest: string };
-  setFormData: React.Dispatch<
-    React.SetStateAction<{ name: string; phone: string; plot_interest: string }>
-  >;
+  formData: EnquiryFormData;
+  setFormData: React.Dispatch<React.SetStateAction<EnquiryFormData>>;
   handleLeadSubmit: (e: React.FormEvent) => Promise<void>;
   formStatus: "idle" | "submitting" | "success";
 }
@@ -23,9 +29,9 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-md transition-opacity  ">
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden scale-100 transition-transform ">
-        <div className="p-6 bg-emerald-800 text-white flex justify-between items-center">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-md transition-opacity">
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden scale-100 transition-transform max-h-[90vh] overflow-y-auto">
+        <div className="p-6 bg-emerald-800 text-white flex justify-between items-center sticky top-0 z-10">
           <div>
             <h3 className="text-xl font-bold">Enquire Now</h3>
             <p className="text-emerald-200 text-xs">
@@ -33,6 +39,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 hover:bg-white/10 rounded-full transition"
           >
@@ -44,7 +51,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({
           <form onSubmit={handleLeadSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-black text-neutral-400 mb-2 uppercase tracking-widest">
-                Full Name
+                Full Name *
               </label>
               <input
                 type="text"
@@ -57,19 +64,51 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({
                 placeholder="Enter your name"
               />
             </div>
+
             <div>
               <label className="block text-xs font-black text-neutral-400 mb-2 uppercase tracking-widest">
-                Phone Number
+                Phone Number *
               </label>
               <input
                 type="tel"
                 required
+                pattern="[0-9+\-\s]{7,}"
                 value={formData.phone}
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full px-5 py-4 rounded-xl bg-neutral-50 border border-neutral-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none transition font-bold text-neutral-800"
                 placeholder="Enter your 10-digit number"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-neutral-400 mb-2 uppercase tracking-widest">
+                Email <span className="text-neutral-300 font-bold">(optional)</span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="w-full px-5 py-4 rounded-xl bg-neutral-50 border border-neutral-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none transition font-bold text-neutral-800"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-neutral-400 mb-2 uppercase tracking-widest">
+                Message <span className="text-neutral-300 font-bold">(optional)</span>
+              </label>
+              <textarea
+                value={formData.message}
+                onChange={(e) =>
+                  setFormData({ ...formData, message: e.target.value })
+                }
+                rows={3}
+                className="w-full px-5 py-4 rounded-xl bg-neutral-50 border border-neutral-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none transition font-bold text-neutral-800 resize-none"
+                placeholder="Any questions or specific requirements?"
               />
             </div>
 

@@ -24,6 +24,8 @@ export default function PlotsPage() {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
+    email: "",
+    message: "",
     plot_interest: "",
   });
   const [formStatus, setFormStatus] = useState<
@@ -41,15 +43,40 @@ export default function PlotsPage() {
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormStatus("submitting");
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://168.144.31.85/api";
+      const response = await fetch(`${apiUrl}/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId:
+            process.env.NEXT_PUBLIC_PROJECT_ID ||
+            "44bf0de8-c797-403b-a7cb-69c7f9ee171e",
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email.trim() || undefined,
+          message: formData.message.trim() || undefined,
+          plotInterest: formData.plot_interest || undefined,
+          source: "plot_map",
+          leadType: formData.plot_interest ? "plot_enquiry" : "enquiry",
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to submit");
+
       setFormStatus("success");
       setTimeout(() => {
         setFormStatus("idle");
         setIsEnquiryModalOpen(false);
-        setFormData({ name: "", phone: "", plot_interest: "" });
+        setFormData({ name: "", phone: "", email: "", message: "", plot_interest: "" });
       }, 2000);
-    }, 1000);
+    } catch (err) {
+      console.error("Lead capture failed:", err);
+      setFormStatus("idle");
+      alert("Something went wrong. Please try again or contact us via WhatsApp.");
+    }
   };
 
   return (

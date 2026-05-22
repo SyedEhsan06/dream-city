@@ -33,6 +33,8 @@ export default function Home() {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
+    email: "",
+    message: "",
     plot_interest: "",
   });
   const [formStatus, setFormStatus] = useState<
@@ -102,7 +104,9 @@ export default function Home() {
             "44bf0de8-c797-403b-a7cb-69c7f9ee171e",
           name: formData.name,
           phone: formData.phone,
-          plotInterest: formData.plot_interest,
+          email: formData.email.trim() || undefined,
+          message: formData.message.trim() || undefined,
+          plotInterest: formData.plot_interest || undefined,
           source: "website_contact",
           leadType: formData.plot_interest ? "plot_enquiry" : "enquiry",
         }),
@@ -114,7 +118,7 @@ export default function Home() {
       setTimeout(() => {
         setFormStatus("idle");
         setIsEnquiryModalOpen(false);
-        setFormData({ name: "", phone: "", plot_interest: "" });
+        setFormData({ name: "", phone: "", email: "", message: "", plot_interest: "" });
       }, 2000);
     } catch (err) {
       console.error("Lead capture failed:", err);

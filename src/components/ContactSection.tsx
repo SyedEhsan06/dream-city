@@ -1,11 +1,10 @@
 import React from "react";
 import { MapPin, Phone, CheckCircle2, X } from "lucide-react";
+import type { EnquiryFormData } from "./EnquiryModal";
 
 interface ContactSectionProps {
-  formData: { name: string; phone: string; plot_interest: string };
-  setFormData: React.Dispatch<
-    React.SetStateAction<{ name: string; phone: string; plot_interest: string }>
-  >;
+  formData: EnquiryFormData;
+  setFormData: React.Dispatch<React.SetStateAction<EnquiryFormData>>;
   handleLeadSubmit: (e: React.FormEvent) => Promise<void>;
   formStatus: "idle" | "submitting" | "success";
 }

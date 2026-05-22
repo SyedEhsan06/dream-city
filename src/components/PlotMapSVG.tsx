@@ -4,9 +4,16 @@ const PlotMapSVG = memo(
   ({ onSelectPlot }: { onSelectPlot: (id: string, sqft: number) => void }) => {
     const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
-    const bookedPlots = useRef<Set<string>>(new Set());
+    // Map of plotNumber → status ('booked' | 'reserved' | 'cancelled')
+    const unavailablePlots = useRef<Map<string, string>>(new Map());
 
-    // Fetch booked/sold plots from CRM — only the IDs that are unavailable
+    const statusClass = (status: string) => {
+      if (status === "reserved") return "RESERVED";
+      if (status === "cancelled") return "CANCELLED";
+      return "BOOKED";
+    };
+
+    // Fetch unavailable plots from CRM — IDs + their status
     useEffect(() => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
@@ -15,13 +22,16 @@ const PlotMapSVG = memo(
         .then((r) => r.json())
         .then((json) => {
           if (json.success && Array.isArray(json.data)) {
-            const set = new Set<string>(json.data.map((p: { plotNumber: string }) => p.plotNumber));
-            bookedPlots.current = set;
-            // Apply BOOKED class to already-indexed rects
-            set.forEach((id) => {
+            const map = new Map<string, string>();
+            (json.data as { plotNumber: string; status: string }[]).forEach(
+              (p) => map.set(p.plotNumber, p.status),
+            );
+            unavailablePlots.current = map;
+            // Apply correct status class to already-indexed rects
+            map.forEach((status, id) => {
               const rect = elementMap.current.get(id);
               if (rect) {
-                rect.classList.add("BOOKED");
+                rect.classList.add(statusClass(status));
                 rect.style.cursor = "not-allowed";
               }
             });
@@ -49,8 +59,8 @@ const PlotMapSVG = memo(
 
       if (!plotId) return;
 
-      // Block clicks on booked/sold plots
-      if (bookedPlots.current.has(plotId)) return;
+      // Block clicks on any unavailable plot (booked/reserved/cancelled)
+      if (unavailablePlots.current.has(plotId)) return;
 
       // Direct DOM manipulation for ultra-fast selection feedback
       const svg = svgRef.current;
@@ -99,9 +109,10 @@ const PlotMapSVG = memo(
             rect.classList.add("TYPE-C");
             text.classList.add("text-C");
           }
-          // Apply booked state if fetch already completed
-          if (bookedPlots.current.has(plotId)) {
-            rect.classList.add("BOOKED");
+          // Apply unavailable status if fetch already completed
+          const status = unavailablePlots.current.get(plotId);
+          if (status) {
+            rect.classList.add(statusClass(status));
             rect.style.cursor = "not-allowed";
           }
         }
@@ -112,7 +123,7 @@ const PlotMapSVG = memo(
     return (
       <div className="relative w-full overflow-x-auto bg-white rounded-2xl shadow-xl border border-neutral-200 p-4 md:p-8 min-h-[600px] flex flex-col items-center justify-center">
         {/* PLOT LEGEND - MOVED TO TOP */}
-        <div className="mb-10 grid grid-cols-2 sm:grid-cols-4 gap-4 w-full max-w-4xl px-4 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="mb-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 w-full max-w-5xl px-4 animate-in fade-in slide-in-from-top-4 duration-500">
           {[
             {
               type: "A",
@@ -161,6 +172,16 @@ const PlotMapSVG = memo(
               </div>
             </button>
           ))}
+          {/* Reserved legend — non-interactive */}
+          <div className="flex items-center gap-4 p-4 rounded-2xl border bg-neutral-50 border-neutral-200 shadow-sm">
+            <div className="w-12 h-12 rounded-xl border-2 border-amber-600 bg-[#f59e0b] flex items-center justify-center font-black text-xl shrink-0 text-white">
+              ⏳
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-black text-neutral-800">RESERVED</div>
+              <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tight">On hold</div>
+            </div>
+          </div>
           {/* Booked legend — non-interactive */}
           <div className="flex items-center gap-4 p-4 rounded-2xl border bg-neutral-50 border-neutral-200 shadow-sm">
             <div className="w-12 h-12 rounded-xl border-2 border-red-800 bg-[#991b1b] flex items-center justify-center font-black text-xl shrink-0 text-white">
@@ -195,6 +216,10 @@ const PlotMapSVG = memo(
         #plots-svg rect.TYPE-C { fill: #38bdf8 !important; }
         #plots-svg rect.BOOKED { fill: #991b1b !important; cursor: not-allowed !important; }
         #plots-svg rect.BOOKED:hover { fill: #7f1d1d !important; }
+        #plots-svg rect.RESERVED { fill: #f59e0b !important; cursor: not-allowed !important; }
+        #plots-svg rect.RESERVED:hover { fill: #d97706 !important; }
+        #plots-svg rect.CANCELLED { fill: #6b7280 !important; cursor: not-allowed !important; }
+        #plots-svg rect.CANCELLED:hover { fill: #4b5563 !important; }
 
         /* Filtering Logic */
         #plots-svg.filtering-A rect:not(.TYPE-A),
