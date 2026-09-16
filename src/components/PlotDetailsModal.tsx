@@ -2,9 +2,14 @@ import React from "react";
 import { X } from "lucide-react";
 
 interface PlotDetailsModalProps {
-  selectedPlot: { id: string; sqft: number; status: string } | null;
+  selectedPlot: {
+    id: string;
+    sqft: number;
+    status: string;
+    locationName?: string;
+  } | null;
   onClose: () => void;
-  onEnquire: (plotId: string) => void;
+  onEnquire: (plotId: string, locationName?: string) => void;
 }
 
 export const PlotDetailsModal: React.FC<PlotDetailsModalProps> = ({
@@ -17,16 +22,17 @@ export const PlotDetailsModal: React.FC<PlotDetailsModalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm transition-opacity">
       <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden scale-100 transition-transform">
-        <div className="p-8 text-white flex justify-between items-start bg-[#1b5e20]">
+        <div className="p-8 text-white flex justify-between items-start bg-emerald-800">
           <div>
-            <div className="text-white/80 font-bold text-xs tracking-wider mb-1 uppercase">
-              Plot Details
+            <div className="text-emerald-200 font-bold text-xs tracking-wider mb-1 uppercase">
+              {selectedPlot.locationName || "Plot Details"}
             </div>
             <h3 className="text-4xl font-black">{selectedPlot.id}</h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 bg-black/10 hover:bg-black/20 rounded-full transition backdrop-blur-sm"
+            className="p-2 bg-black/10 hover:bg-black/20 rounded-full transition backdrop-blur-sm cursor-pointer"
           >
             <X className="w-6 h-6" />
           </button>
@@ -54,8 +60,9 @@ export const PlotDetailsModal: React.FC<PlotDetailsModalProps> = ({
 
           <div>
             <button
-              onClick={() => onEnquire(selectedPlot.id)}
-              className="block w-full text-center bg-emerald-700 text-white py-4 rounded-xl font-bold hover:bg-emerald-800 transition shadow-lg shadow-emerald-700/20"
+              type="button"
+              onClick={() => onEnquire(selectedPlot.id, selectedPlot.locationName)}
+              className="block w-full text-center bg-emerald-700 text-white py-4 rounded-xl font-bold hover:bg-emerald-800 transition shadow-lg shadow-emerald-700/20 cursor-pointer"
             >
               Enquire Now
             </button>

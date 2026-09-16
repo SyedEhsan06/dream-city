@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import React, { useState, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { Header } from "../../components/Header";
 import { EnquiryModal } from "../../components/EnquiryModal";
@@ -19,7 +20,16 @@ const PlotMapSVG = dynamic(() => import("../../components/PlotMapSVG"), {
   ),
 });
 
-export default function PlotsPage() {
+function PlotsContent() {
+  const searchParams = useSearchParams();
+  const initialLoc =
+    searchParams.get("location") === "harit-vihar"
+      ? "harit-vihar"
+      : "dream-park";
+
+  const [activeLocation, setActiveLocation] = useState<
+    "dream-park" | "harit-vihar"
+  >(initialLoc);
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -32,13 +42,16 @@ export default function PlotsPage() {
     "idle" | "submitting" | "success"
   >("idle");
 
-  const handlePlotSelect = useCallback((id: string, sqft: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      plot_interest: `${id} (${sqft} sqft)`,
-    }));
-    setIsEnquiryModalOpen(true);
-  }, []);
+  const handlePlotSelect = useCallback(
+    (id: string, sqft: number, locationName: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        plot_interest: `${id} (${sqft} sqft) - ${locationName}`,
+      }));
+      setIsEnquiryModalOpen(true);
+    },
+    [],
+  );
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,34 +83,52 @@ export default function PlotsPage() {
       setTimeout(() => {
         setFormStatus("idle");
         setIsEnquiryModalOpen(false);
-        setFormData({ name: "", phone: "", email: "", message: "", plot_interest: "" });
+        setFormData({
+          name: "",
+          phone: "",
+          email: "",
+          message: "",
+          plot_interest: "",
+        });
       }, 2000);
     } catch (err) {
       console.error("Lead capture failed:", err);
       setFormStatus("idle");
-      alert("Something went wrong. Please try again or contact us via WhatsApp.");
+      alert(
+        "Something went wrong. Please try again or contact us via WhatsApp.",
+      );
     }
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
-      <Header onEnquireClick={() => setIsEnquiryModalOpen(true)} />
+      <Header
+        onEnquireClick={() => setIsEnquiryModalOpen(true)}
+        onSelectLocation={(loc) => setActiveLocation(loc)}
+      />
 
       <main className="flex-1 py-12 px-4 sm:px-6">
         <div className="max-w-[1400px] mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-black text-neutral-900 mb-6 tracking-tight">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100/80 border border-emerald-200 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-4">
+              {activeLocation === "harit-vihar"
+                ? "Harit Vihar · Kesariya"
+                : "Dream Park · Bettiah"}
+            </div>
+            <h1 className="text-4xl md:text-6xl font-black text-neutral-900 mb-4 tracking-tight">
               Interactive Master Plan
             </h1>
             <p className="text-xl text-neutral-600 max-w-3xl mx-auto leading-relaxed">
-              Explore the complete layout of Dream Park Bettiah. Use the legend
-              to filter by plot size and select any plot to enquire about
-              availability and pricing.
+              Explore layout plans for Dream Park Bettiah and Harit Vihar Kesariya. Use the legend to filter by plot type and select any available plot to enquire.
             </p>
           </div>
 
           <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-emerald-900/5 border border-neutral-100 overflow-hidden">
-            <PlotMapSVG onSelectPlot={handlePlotSelect} />
+            <PlotMapSVG
+              onSelectPlot={handlePlotSelect}
+              initialLocation={activeLocation}
+              onLocationChange={setActiveLocation}
+            />
           </div>
         </div>
       </main>
@@ -115,5 +146,19 @@ export default function PlotsPage() {
 
       <WhatsAppButton />
     </div>
+  );
+}
+
+export default function PlotsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+          <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <PlotsContent />
+    </Suspense>
   );
 }

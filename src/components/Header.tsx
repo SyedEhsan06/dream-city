@@ -4,11 +4,28 @@ import { ChevronDown, MapPin, LayoutGrid } from "lucide-react";
 
 interface HeaderProps {
   onEnquireClick: () => void;
+  onSelectLocation?: (location: "dream-park" | "harit-vihar") => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onEnquireClick }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onEnquireClick,
+  onSelectLocation,
+}) => {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const pathname = usePathname();
+
+  const handleProjectClick = (loc: "dream-park" | "harit-vihar") => {
+    setIsProjectsOpen(false);
+    if (onSelectLocation) {
+      onSelectLocation(loc);
+      const plotsEl = document.getElementById("plots");
+      if (plotsEl) {
+        plotsEl.scrollIntoView({ behavior: "smooth" });
+      }
+    } else {
+      window.location.href = `/plots?location=${loc}`;
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-neutral-200">
@@ -34,11 +51,14 @@ export const Header: React.FC<HeaderProps> = ({ onEnquireClick }) => {
             >
               Home
             </a>
-            <div className="relative group">
+            <div
+              className="relative group"
+              onMouseEnter={() => setIsProjectsOpen(true)}
+              onMouseLeave={() => setIsProjectsOpen(false)}
+            >
               <button
-                onMouseEnter={() => setIsProjectsOpen(true)}
-                onMouseLeave={() => setIsProjectsOpen(false)}
-                className="flex items-center gap-1.5 hover:text-emerald-700 transition-colors py-2"
+                type="button"
+                className="flex items-center gap-1.5 hover:text-emerald-700 transition-colors py-2 cursor-pointer"
               >
                 Projects{" "}
                 <ChevronDown
@@ -48,18 +68,46 @@ export const Header: React.FC<HeaderProps> = ({ onEnquireClick }) => {
 
               {isProjectsOpen && (
                 <div
-                  onMouseEnter={() => setIsProjectsOpen(true)}
-                  onMouseLeave={() => setIsProjectsOpen(false)}
-                  className="absolute top-full left-0 w-48 bg-white rounded-2xl shadow-2xl border border-neutral-100 p-2 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
+                  className="absolute top-full left-0 w-64 bg-white rounded-2xl shadow-2xl border border-neutral-100 p-2 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
                 >
-                  <div className="p-2 mb-1 text-[10px] text-neutral-400 font-black tracking-widest">
+                  <div className="p-2 text-[10px] text-neutral-400 font-black tracking-widest uppercase">
                     Active Projects
                   </div>
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
-                    <MapPin className="w-4 h-4" />
-                    <span>Bettiah</span>
-                    <div className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  </button>
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => handleProjectClick("dream-park")}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-neutral-800 hover:text-emerald-800 transition text-left cursor-pointer group/item"
+                    >
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <div className="font-bold text-xs text-neutral-900 group-hover/item:text-emerald-800">
+                          Dream Park · Bettiah
+                        </div>
+                        <div className="text-[10px] text-neutral-400">
+                          1,818 Plots · Master Layout
+                        </div>
+                      </div>
+                      <div className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleProjectClick("harit-vihar")}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-neutral-800 hover:text-emerald-800 transition text-left cursor-pointer group/item"
+                    >
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <div className="font-bold text-xs text-neutral-900 group-hover/item:text-emerald-800">
+                          Harit Vihar · Kesariya
+                        </div>
+                        <div className="text-[10px] text-neutral-400">
+                          895 Plots · Virat Ramayan Mandir
+                        </div>
+                      </div>
+                      <div className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -1,11 +1,137 @@
-import React, { useRef, useEffect, memo } from "react";
+import React, { useRef, useEffect, useState, useMemo, memo } from "react";
+import { HaritViharSVG, HARIT_HOTSPOTS } from "./HaritViharSVG";
+import { Lock, Hourglass } from "lucide-react";
+
+interface PlotMapSVGProps {
+  onSelectPlot: (id: string, sqft: number, locationName: string) => void;
+  initialLocation?: "dream-park" | "harit-vihar";
+  onLocationChange?: (location: "dream-park" | "harit-vihar") => void;
+}
+
+const HARIT_LEGEND = [
+  {
+    type: "AR",
+    area: "3600 SQ. FT.",
+    dim: "50'-0\" X 72'-0\"",
+    color: "bg-[#EF4444] border-red-600 text-white",
+  },
+  {
+    type: "B",
+    area: "2700 SQ. FT.",
+    dim: "45'-0\" X 60'-0\"",
+    color: "bg-[#F9A8B8] border-pink-300 text-white",
+  },
+  {
+    type: "BR",
+    area: "2700 SQ. FT.",
+    dim: "45'-0\" X 60'-0\"",
+    color: "bg-[#FBBF24] border-amber-400 text-white",
+  },
+  {
+    type: "C",
+    area: "1800 SQ. FT.",
+    dim: "36'-0\" X 50'-0\"",
+    color: "bg-[#D8B4FE] border-purple-300 text-white",
+  },
+  {
+    type: "CR",
+    area: "1800 SQ. FT.",
+    dim: "36'-0\" X 50'-0\"",
+    color: "bg-[#A78BFA] border-purple-400 text-white",
+  },
+  {
+    type: "D",
+    area: "1200 SQ. FT.",
+    dim: "30'-0\" X 40'-0\"",
+    color: "bg-[#38BDF8] border-sky-400 text-white",
+  },
+  {
+    type: "DR",
+    area: "1200 SQ. FT.",
+    dim: "30'-0\" X 40'-0\"",
+    color: "bg-[#0EA5E9] border-sky-600 text-white",
+  },
+  {
+    type: "RESERVED",
+    area: "RESERVED",
+    dim: "ON HOLD",
+    color: "bg-[#f59e0b] border-amber-600 text-white",
+    icon: "hourglass",
+  },
+  {
+    type: "BOOKED",
+    area: "BOOKED",
+    dim: "NOT AVAILABLE",
+    color: "bg-[#991b1b] border-red-900 text-white",
+    icon: "lock",
+  },
+];
+
+const DREAM_PARK_LEGEND = [
+  {
+    type: "A",
+    area: "2700 SQ. FT.",
+    dim: "45'-0\" X 60'-0\"",
+    color: "bg-[#fb7185] border-rose-500 text-white",
+  },
+  {
+    type: "B",
+    area: "1800 SQ. FT.",
+    dim: "36'-0\" X 50'-0\"",
+    color: "bg-[#f472b6] border-pink-500 text-white",
+  },
+  {
+    type: "C",
+    area: "1200 SQ. FT.",
+    dim: "30'-0\" X 40'-0\"",
+    color: "bg-[#38bdf8] border-sky-500 text-white",
+  },
+  {
+    type: "RESERVED",
+    area: "RESERVED",
+    dim: "ON HOLD",
+    color: "bg-[#f59e0b] border-amber-600 text-white",
+    icon: "hourglass",
+  },
+  {
+    type: "BOOKED",
+    area: "BOOKED",
+    dim: "NOT AVAILABLE",
+    color: "bg-[#991b1b] border-red-900 text-white",
+    icon: "lock",
+  },
+];
 
 const PlotMapSVG = memo(
-  ({ onSelectPlot }: { onSelectPlot: (id: string, sqft: number) => void }) => {
-    const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
+  ({
+    onSelectPlot,
+    initialLocation = "dream-park",
+    onLocationChange,
+  }: PlotMapSVGProps) => {
+    const [activeLocation, setActiveLocation] = useState<
+      "dream-park" | "harit-vihar"
+    >(initialLocation);
+    const [activeTypeFilter, setActiveTypeFilter] = useState<string | null>(
+      null,
+    );
+    const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>(
+      null,
+    );
+    const [selectedPlotId, setSelectedPlotId] = useState<string | null>(null);
+
     const svgRef = useRef<SVGSVGElement | null>(null);
     // Map of plotNumber → status ('booked' | 'reserved' | 'cancelled')
-    const unavailablePlots = useRef<Map<string, string>>(new Map());
+    const [unavailablePlots, setUnavailablePlots] = useState<Map<string, string>>(
+      new Map(),
+    );
+    const unavailablePlotsRef = useRef<Map<string, string>>(new Map());
+
+    // Sync external initialLocation changes
+    useEffect(() => {
+      if (initialLocation) {
+        setActiveLocation(initialLocation);
+      }
+    }, [initialLocation]);
 
     const statusClass = (status: string) => {
       if (status === "reserved") return "RESERVED";
@@ -15,19 +141,29 @@ const PlotMapSVG = memo(
 
     // Fetch unavailable plots from CRM — IDs + their status
     useEffect(() => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
-      if (!apiUrl || !projectId) return;
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://168.144.31.85/api";
+      const projectId =
+        process.env.NEXT_PUBLIC_PROJECT_ID ||
+        "44bf0de8-c797-403b-a7cb-69c7f9ee171e";
+      if (!apiUrl) return;
+
       fetch(`${apiUrl}/plots/public/availability?projectId=${projectId}`)
         .then((r) => r.json())
         .then((json) => {
           if (json.success && Array.isArray(json.data)) {
             const map = new Map<string, string>();
-            (json.data as { plotNumber: string; status: string }[]).forEach(
-              (p) => map.set(p.plotNumber, p.status),
-            );
-            unavailablePlots.current = map;
-            // Apply correct status class to already-indexed rects
+            (
+              json.data as {
+                plotNumber: string;
+                status: string;
+                locationId?: string;
+              }[]
+            ).forEach((p) => map.set(p.plotNumber, p.status));
+            setUnavailablePlots(map);
+            unavailablePlotsRef.current = map;
+
+            // Apply correct status class to already-indexed rects for Dream Park
             map.forEach((status, id) => {
               const rect = elementMap.current.get(id);
               if (rect) {
@@ -39,6 +175,45 @@ const PlotMapSVG = memo(
         })
         .catch(() => {});
     }, []);
+
+    // Calculate stats for current active location
+    const stats = useMemo(() => {
+      if (activeLocation === "harit-vihar") {
+        const total = HARIT_HOTSPOTS.length; // 895
+        let booked = 0;
+        let reserved = 0;
+
+        HARIT_HOTSPOTS.forEach((h) => {
+          const status = unavailablePlots.get(h.plotNumber);
+          if (status === "booked") booked++;
+          else if (status === "reserved") reserved++;
+        });
+
+        const available = Math.max(0, total - booked - reserved);
+        return { total, available, reserved, booked };
+      } else {
+        const total = 1818;
+        let booked = 0;
+        let reserved = 0;
+
+        unavailablePlots.forEach((status, plotNumber) => {
+          // Exclude Harit Vihar prefix plots when counting Dream Park
+          const isHaritPrefix =
+            plotNumber.startsWith("AR-") ||
+            plotNumber.startsWith("BR-") ||
+            plotNumber.startsWith("CR-") ||
+            plotNumber.startsWith("DR-") ||
+            plotNumber.startsWith("D-");
+          if (!isHaritPrefix) {
+            if (status === "booked") booked++;
+            else if (status === "reserved") reserved++;
+          }
+        });
+
+        const available = Math.max(0, total - booked - reserved);
+        return { total, available, reserved, booked };
+      }
+    }, [activeLocation, unavailablePlots]);
 
     const handleSvgClick = (event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -59,8 +234,8 @@ const PlotMapSVG = memo(
 
       if (!plotId) return;
 
-      // Block clicks on any unavailable plot (booked/reserved/cancelled)
-      if (unavailablePlots.current.has(plotId)) return;
+      // Block clicks on any unavailable plot (booked/reserved)
+      if (unavailablePlotsRef.current.has(plotId)) return;
 
       // Direct DOM manipulation for ultra-fast selection feedback
       const svg = svgRef.current;
@@ -72,6 +247,8 @@ const PlotMapSVG = memo(
         if (rect) rect.classList.add("SELECTED");
       }
 
+      setSelectedPlotId(plotId);
+
       // Calculate SQFT based on ID prefix
       let sqft = 1000;
       const id = plotId.toUpperCase();
@@ -79,13 +256,14 @@ const PlotMapSVG = memo(
       else if (id.startsWith("B") || id.startsWith("RB")) sqft = 1800;
       else if (id.startsWith("C") || id.startsWith("RC")) sqft = 1200;
 
-      onSelectPlot(plotId, sqft);
+      onSelectPlot(plotId, sqft, "Dream Park (Bettiah)");
     };
 
     const elementMap = useRef<Map<string, SVGRectElement>>(new Map());
 
-    // Index elements once on mount for ultra-fast selection lookups
+    // Index elements once on mount for ultra-fast selection lookups in Dream Park
     useEffect(() => {
+      if (activeLocation !== "dream-park") return;
       const svg = svgRef.current;
       if (!svg) return;
 
@@ -110,7 +288,7 @@ const PlotMapSVG = memo(
             text.classList.add("text-C");
           }
           // Apply unavailable status if fetch already completed
-          const status = unavailablePlots.current.get(plotId);
+          const status = unavailablePlotsRef.current.get(plotId);
           if (status) {
             rect.classList.add(statusClass(status));
             rect.style.cursor = "not-allowed";
@@ -118,152 +296,303 @@ const PlotMapSVG = memo(
         }
       });
       elementMap.current = map;
-    }, []);
+    }, [activeLocation]);
+
+    const activeLegend =
+      activeLocation === "harit-vihar" ? HARIT_LEGEND : DREAM_PARK_LEGEND;
 
     return (
-      <div className="relative w-full overflow-x-auto bg-white rounded-2xl shadow-xl border border-neutral-200 p-4 md:p-8 min-h-[600px] flex flex-col items-center justify-center">
-        {/* PLOT LEGEND - MOVED TO TOP */}
-        <div className="mb-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 w-full max-w-5xl px-4 animate-in fade-in slide-in-from-top-4 duration-500">
-          {[
-            {
-              type: "A",
-              area: "2700 SQ. FT.",
-              dim: "45'-0\" X 60'-0\"",
-              color: "bg-[#fb7185] border-rose-500 text-white",
-            },
-            {
-              type: "B",
-              area: "1800 SQ. FT.",
-              dim: "36'-0\" X 50'-0\"",
-              color: "bg-[#f472b6] border-pink-500 text-white",
-            },
-            {
-              type: "C",
-              area: "1200 SQ. FT.",
-              dim: "30'-0\" X 40'-0\"",
-              color: "bg-[#38bdf8] border-sky-500 text-white",
-            },
-          ].map((item) => (
+      <div className="relative w-full overflow-x-auto bg-white rounded-3xl shadow-xl border border-neutral-200 p-4 md:p-8 min-h-[600px] flex flex-col items-center justify-center">
+        {/* LOCATION CHANGER / SWITCHER TABS */}
+        <div className="flex flex-col items-center justify-center mb-8 w-full max-w-2xl">
+          <div className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-3">
+            Select Project Location
+          </div>
+          <div className="bg-neutral-100 p-1.5 rounded-2xl flex flex-wrap gap-2 shadow-inner border border-neutral-200 w-full">
             <button
-              key={item.type}
-              onClick={() =>
-                setActiveFilter(activeFilter === item.type ? null : item.type)
-              }
-              className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer group ${
-                activeFilter === item.type
-                  ? "bg-white border-emerald-500 shadow-lg ring-2 ring-emerald-500/20 -translate-y-1"
-                  : activeFilter
-                    ? "bg-neutral-50 border-neutral-100 opacity-40 grayscale scale-95"
-                    : "bg-neutral-50 border-neutral-200 shadow-sm hover:shadow-md hover:-translate-y-1"
+              type="button"
+              onClick={() => {
+                setActiveLocation("dream-park");
+                setActiveTypeFilter(null);
+                setActiveStatusFilter(null);
+                setSelectedPlotId(null);
+                if (onLocationChange) onLocationChange("dream-park");
+              }}
+              className={`flex-1 min-w-[200px] py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-3 transition-all duration-300 cursor-pointer ${
+                activeLocation === "dream-park"
+                  ? "bg-white text-emerald-900 shadow-md ring-2 ring-emerald-500/20 scale-[1.02]"
+                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
               }`}
             >
-              <div
-                className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center font-black text-xl shrink-0 transition-transform ${item.color} ${activeFilter === item.type ? "scale-110" : "group-hover:scale-110"}`}
-              >
-                {item.type}
-              </div>
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  activeLocation === "dream-park"
+                    ? "bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20"
+                    : "bg-neutral-300"
+                }`}
+              />
               <div className="text-left">
-                <div className="text-sm font-black text-neutral-800">
-                  {item.area}
+                <div className="font-extrabold text-base tracking-tight leading-tight">
+                  Dream Park
                 </div>
-                <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tight">
-                  {item.dim}
+                <div className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
+                  Bettiah · 1,818 Plots
                 </div>
               </div>
             </button>
-          ))}
-          {/* Reserved legend — non-interactive */}
-          <div className="flex items-center gap-4 p-4 rounded-2xl border bg-neutral-50 border-neutral-200 shadow-sm">
-            <div className="w-12 h-12 rounded-xl border-2 border-amber-600 bg-[#f59e0b] flex items-center justify-center font-black text-xl shrink-0 text-white">
-              ⏳
-            </div>
-            <div className="text-left">
-              <div className="text-sm font-black text-neutral-800">RESERVED</div>
-              <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tight">On hold</div>
-            </div>
-          </div>
-          {/* Booked legend — non-interactive */}
-          <div className="flex items-center gap-4 p-4 rounded-2xl border bg-neutral-50 border-neutral-200 shadow-sm">
-            <div className="w-12 h-12 rounded-xl border-2 border-red-800 bg-[#991b1b] flex items-center justify-center font-black text-xl shrink-0 text-white">
-              🔒
-            </div>
-            <div className="text-left">
-              <div className="text-sm font-black text-neutral-800">BOOKED</div>
-              <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tight">Not available</div>
-            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveLocation("harit-vihar");
+                setActiveTypeFilter(null);
+                setActiveStatusFilter(null);
+                setSelectedPlotId(null);
+                if (onLocationChange) onLocationChange("harit-vihar");
+              }}
+              className={`flex-1 min-w-[200px] py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-3 transition-all duration-300 cursor-pointer ${
+                activeLocation === "harit-vihar"
+                  ? "bg-white text-emerald-900 shadow-md ring-2 ring-emerald-500/20 scale-[1.02]"
+                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
+              }`}
+            >
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  activeLocation === "harit-vihar"
+                    ? "bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20"
+                    : "bg-neutral-300"
+                }`}
+              />
+              <div className="text-left">
+                <div className="font-extrabold text-base tracking-tight leading-tight">
+                  Harit Vihar
+                </div>
+                <div className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
+                  Kesariya · 895 Plots
+                </div>
+              </div>
+            </button>
           </div>
         </div>
 
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-        #plots-svg rect {
-          fill: #064e3b !important;
-          stroke: #ffffff;
-          stroke-width: 0.15;
-          cursor: pointer;
-          transition: fill 0.1s ease;
-        }
-        #plots-svg rect:hover { fill: #059669 !important; }
-        #plots-svg rect.SELECTED {
-          fill: #f59e0b !important;
-          stroke: #000000 !important;
-          stroke-width: 0.4;
-          transition: none; /* Instant feedback for selection */
-        }
-        #plots-svg rect.TYPE-A { fill: #fb7185 !important; }
-        #plots-svg rect.TYPE-B { fill: #f472b6 !important; }
-        #plots-svg rect.TYPE-C { fill: #38bdf8 !important; }
-        #plots-svg rect.BOOKED { fill: #991b1b !important; cursor: not-allowed !important; }
-        #plots-svg rect.BOOKED:hover { fill: #7f1d1d !important; }
-        #plots-svg rect.RESERVED { fill: #f59e0b !important; cursor: not-allowed !important; }
-        #plots-svg rect.RESERVED:hover { fill: #d97706 !important; }
-        #plots-svg rect.CANCELLED { fill: #6b7280 !important; cursor: not-allowed !important; }
-        #plots-svg rect.CANCELLED:hover { fill: #4b5563 !important; }
+        {/* STATS BAR (Clean 4-card metric display: Total, Available, Reserved, Booked) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-4xl mb-8 animate-in fade-in slide-in-from-top-3 duration-300">
+          {[
+            {
+              key: "total",
+              label: "TOTAL",
+              count: stats.total,
+              color: "text-slate-900",
+              labelColor: "text-slate-500",
+              bg: "bg-slate-100/90 border-slate-200",
+              activeBorder: "border-slate-800 ring-2 ring-slate-400",
+            },
+            {
+              key: "available",
+              label: "AVAILABLE",
+              count: stats.available,
+              color: "text-emerald-700",
+              labelColor: "text-emerald-600",
+              bg: "bg-emerald-50 border-emerald-200",
+              activeBorder: "border-emerald-600 ring-2 ring-emerald-500/30",
+            },
+            {
+              key: "reserved",
+              label: "RESERVED",
+              count: stats.reserved,
+              color: "text-amber-700",
+              labelColor: "text-amber-600",
+              bg: "bg-amber-50 border-amber-200",
+              activeBorder: "border-amber-600 ring-2 ring-amber-500/30",
+            },
+            {
+              key: "booked",
+              label: "BOOKED",
+              count: stats.booked,
+              color: "text-white",
+              labelColor: "text-red-100",
+              bg: "bg-[#991b1b] border-red-900 shadow-md",
+              activeBorder: "border-red-600 ring-2 ring-red-400",
+            },
+          ].map((stat) => (
+            <button
+              key={stat.key}
+              type="button"
+              onClick={() =>
+                setActiveStatusFilter(
+                  activeStatusFilter === stat.key
+                    ? null
+                    : stat.key === "total"
+                      ? null
+                      : stat.key,
+                )
+              }
+              className={`rounded-2xl p-4 text-center border-2 transition-all cursor-pointer ${stat.bg} ${
+                activeStatusFilter === stat.key
+                  ? stat.activeBorder
+                  : "hover:scale-[1.02] hover:shadow-sm"
+              }`}
+            >
+              <div className={`text-2xl sm:text-3xl font-black ${stat.color}`}>
+                {stat.count}
+              </div>
+              <div
+                className={`text-[11px] font-bold ${stat.labelColor} uppercase tracking-wider mt-0.5`}
+              >
+                {stat.label}
+              </div>
+            </button>
+          ))}
+        </div>
 
-        /* Filtering Logic */
-        #plots-svg.filtering-A rect:not(.TYPE-A),
-        #plots-svg.filtering-B rect:not(.TYPE-B),
-        #plots-svg.filtering-C rect:not(.TYPE-C) {
-          opacity: 0.1;
-          filter: grayscale(80%);
-        }
+        {/* PLOT LEGEND & CATEGORY FILTERS */}
+        <div className="mb-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full max-w-5xl px-2 animate-in fade-in slide-in-from-top-4 duration-500">
+          {activeLegend.map((item) => {
+            const isFilterActive = activeTypeFilter === item.type;
+            const isDimmed = activeTypeFilter && !isFilterActive;
 
-        #plots-svg.filtering-A text:not(.text-A),
-        #plots-svg.filtering-B text:not(.text-B),
-        #plots-svg.filtering-C text:not(.text-C) {
-          opacity: 0.05;
-        }
+            return (
+              <button
+                key={item.type}
+                type="button"
+                onClick={() =>
+                  setActiveTypeFilter(
+                    activeTypeFilter === item.type ? null : item.type,
+                  )
+                }
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer group text-left ${
+                  isFilterActive
+                    ? "bg-white border-emerald-500 shadow-lg ring-2 ring-emerald-500/20 -translate-y-1"
+                    : isDimmed
+                      ? "bg-neutral-50 border-neutral-100 opacity-40 grayscale scale-95"
+                      : "bg-neutral-50 border-neutral-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                }`}
+              >
+                <div
+                  className={`w-11 h-11 rounded-xl border flex items-center justify-center font-black text-lg shrink-0 transition-transform ${item.color} ${
+                    isFilterActive ? "scale-105" : "group-hover:scale-105"
+                  }`}
+                >
+                  {item.icon === "hourglass" ? (
+                    <Hourglass className="w-5 h-5 text-white" />
+                  ) : item.icon === "lock" ? (
+                    <Lock className="w-5 h-5 text-white" />
+                  ) : (
+                    item.type
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-black text-neutral-800 truncate">
+                    {item.area}
+                  </div>
+                  <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tight truncate">
+                    {item.dim}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
-        .textSVG {
-          fill: white;
-          font-size: 1.5px;
-          font-weight: 600;
-          pointer-events: none;
-          text-anchor: middle;
-          dominant-baseline: middle;
-          transform: translate(0.8px, 0.3px);
-        }
-        .parkText {
-          fill: #064e3b;
-          font-size: 6px;
-          font-weight: 800;
-          opacity: 0.2;
-          text-anchor: middle;
-        }
-      `,
-          }}
-        />
-        <div onClick={handleSvgClick} className="w-full h-full">
-          <svg
-            id="plots-svg"
-            ref={svgRef}
-            viewBox="0 0 260 410"
-            width="1200"
-            height="1890"
-            style={{ display: "block", margin: "0 auto" }}
-            className={`transition-all duration-500 ${activeFilter ? `filtering-${activeFilter}` : ""}`}
-          >
+        {/* HARIT VIHAR MAP */}
+        {activeLocation === "harit-vihar" && (
+          <HaritViharSVG
+            onSelectPlot={onSelectPlot}
+            unavailablePlots={unavailablePlots}
+            activeTypeFilter={activeTypeFilter}
+            activeStatusFilter={activeStatusFilter}
+            selectedPlotId={selectedPlotId}
+          />
+        )}
+
+        {/* DREAM PARK MAP */}
+        {activeLocation === "dream-park" && (
+          <div className="w-full">
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
+            #plots-svg rect {
+              fill: #064e3b !important;
+              stroke: #ffffff;
+              stroke-width: 0.15;
+              cursor: pointer;
+              transition: fill 0.1s ease;
+            }
+            #plots-svg rect:hover { fill: #059669 !important; }
+            #plots-svg rect.SELECTED {
+              fill: #f59e0b !important;
+              stroke: #000000 !important;
+              stroke-width: 0.4;
+              transition: none;
+            }
+            #plots-svg rect.TYPE-A { fill: #fb7185 !important; }
+            #plots-svg rect.TYPE-B { fill: #f472b6 !important; }
+            #plots-svg rect.TYPE-C { fill: #38bdf8 !important; }
+            #plots-svg rect.BOOKED { fill: #991b1b !important; cursor: not-allowed !important; }
+            #plots-svg rect.BOOKED:hover { fill: #7f1d1d !important; }
+            #plots-svg rect.RESERVED { fill: #f59e0b !important; cursor: not-allowed !important; }
+            #plots-svg rect.RESERVED:hover { fill: #d97706 !important; }
+            /* Filtering Logic */
+            #plots-svg.filtering-A rect:not(.TYPE-A),
+            #plots-svg.filtering-B rect:not(.TYPE-B),
+            #plots-svg.filtering-C rect:not(.TYPE-C),
+            #plots-svg.filtering-BOOKED rect:not(.BOOKED),
+            #plots-svg.filtering-RESERVED rect:not(.RESERVED),
+            #plots-svg.filtering-STATUS-booked rect:not(.BOOKED),
+            #plots-svg.filtering-STATUS-reserved rect:not(.RESERVED),
+            #plots-svg.filtering-STATUS-available rect.BOOKED,
+            #plots-svg.filtering-STATUS-available rect.RESERVED {
+              opacity: 0.12;
+              filter: grayscale(80%);
+            }
+
+            #plots-svg.filtering-A text:not(.text-A),
+            #plots-svg.filtering-B text:not(.text-B),
+            #plots-svg.filtering-C text:not(.text-C),
+            #plots-svg.filtering-BOOKED text:not(.text-BOOKED),
+            #plots-svg.filtering-RESERVED text:not(.text-RESERVED),
+            #plots-svg.filtering-STATUS-booked text:not(.text-BOOKED),
+            #plots-svg.filtering-STATUS-reserved text:not(.text-RESERVED),
+            #plots-svg.filtering-STATUS-available text.text-BOOKED,
+            #plots-svg.filtering-STATUS-available text.text-RESERVED {
+              opacity: 0.05;
+            }
+
+            .textSVG {
+              fill: white;
+              font-size: 1.5px;
+              font-weight: 600;
+              pointer-events: none;
+              text-anchor: middle;
+              dominant-baseline: middle;
+              transform: translate(0.8px, 0.3px);
+            }
+            .parkText {
+              fill: #064e3b;
+              font-size: 6px;
+              font-weight: 800;
+              opacity: 0.2;
+              text-anchor: middle;
+            }
+          `,
+              }}
+            />
+            <div onClick={handleSvgClick} className="w-full h-full">
+              <svg
+                id="plots-svg"
+                ref={svgRef}
+                viewBox="0 0 260 410"
+                width="1200"
+                height="1890"
+                style={{ display: "block", margin: "0 auto" }}
+                className={`transition-all duration-500 ${
+                  activeTypeFilter
+                    ? `filtering-${activeTypeFilter}`
+                    : activeStatusFilter
+                      ? `filtering-STATUS-${activeStatusFilter}`
+                      : ""
+                }`}
+              >
             <text x="55" y="213" className="parkText">
               PARK
             </text>
@@ -22095,7 +22424,9 @@ const PlotMapSVG = memo(
           </svg>
         </div>
       </div>
-    );
+    )}
+  </div>
+);
   },
 );
 

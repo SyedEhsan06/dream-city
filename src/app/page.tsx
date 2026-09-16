@@ -16,6 +16,7 @@ import { Footer } from "../components/Footer";
 import { EnquiryModal } from "../components/EnquiryModal";
 import { PlotDetailsModal } from "../components/PlotDetailsModal";
 import { WhatsAppButton } from "../components/WhatsAppButton";
+import { HARIT_HOTSPOTS, HARIT_TYPE_SQFT } from "../components/HaritViharSVG";
 
 const PlotMapSVG = dynamic(() => import("../components/PlotMapSVG"), {
   ssr: false,
@@ -30,6 +31,13 @@ const PlotMapSVG = dynamic(() => import("../components/PlotMapSVG"), {
 });
 
 export default function Home() {
+  const [activeLocation, setActiveLocation] = useState<
+    "dream-park" | "harit-vihar"
+  >("dream-park");
+  const [searchLocation, setSearchLocation] = useState<
+    "dream-park" | "harit-vihar"
+  >("dream-park");
+
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -40,7 +48,12 @@ export default function Home() {
   const [formStatus, setFormStatus] = useState<
     "idle" | "submitting" | "success"
   >("idle");
-  const [selectedPlot, setSelectedPlot] = useState<any>(null);
+  const [selectedPlot, setSelectedPlot] = useState<{
+    id: string;
+    sqft: number;
+    status: string;
+    locationName?: string;
+  } | null>(null);
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
 
   // Search State
@@ -48,42 +61,52 @@ export default function Home() {
   const [searchResult, setSearchResult] = useState<{
     count: number;
     message: string;
+    locationName?: string;
   } | null>(null);
-  const [currentMapData, setCurrentMapData] = useState<any[]>(layoutMatrix);
+  const [currentMapData] = useState<any[]>(layoutMatrix);
 
   const handleSearch = () => {
-    if (!searchSqft) {
-      setSearchResult({
-        count: 0,
-        message: "Please enter a minimum area in square feet.",
-      });
-      return;
-    }
-    const sqft = parseInt(searchSqft);
-    if (isNaN(sqft) || sqft <= 0) {
-      setSearchResult({ count: 0, message: "Invalid area entered." });
-      return;
-    }
-
+    const sqft = parseInt(searchSqft) || 0;
     let count = 0;
-    currentMapData.forEach((item: any) => {
-      const isPlot = item.type && item.type.toLowerCase() === "plot";
-      if (isPlot && item.id) {
-        const id = item.id.toUpperCase();
-        let plotSqft = 0;
 
-        if (id.startsWith("A") || id.startsWith("RA")) plotSqft = 2700;
-        else if (id.startsWith("B") || id.startsWith("RB")) plotSqft = 1800;
-        else if (id.startsWith("C") || id.startsWith("RC")) plotSqft = 1200;
-        else plotSqft = 1000;
-
-        if (plotSqft >= sqft) {
+    if (searchLocation === "harit-vihar") {
+      HARIT_HOTSPOTS.forEach((h) => {
+        const plotSqft = HARIT_TYPE_SQFT[h.type] || 1200;
+        if (sqft === 0 || plotSqft >= sqft) {
           count++;
         }
-      }
-    });
+      });
+      setSearchResult({
+        count,
+        message: "",
+        locationName: "Harit Vihar (Kesariya)",
+      });
+    } else {
+      currentMapData.forEach((item: any) => {
+        const isPlot = item.type && item.type.toLowerCase() === "plot";
+        if (isPlot && item.id) {
+          const id = item.id.toUpperCase();
+          let plotSqft = 1200;
+          if (id.startsWith("A") || id.startsWith("RA")) plotSqft = 2700;
+          else if (id.startsWith("B") || id.startsWith("RB")) plotSqft = 1800;
+          else if (id.startsWith("C") || id.startsWith("RC")) plotSqft = 1200;
 
-    setSearchResult({ count, message: "" });
+          if (sqft === 0 || plotSqft >= sqft) {
+            count++;
+          }
+        }
+      });
+      setSearchResult({
+        count,
+        message: "",
+        locationName: "Dream Park (Bettiah)",
+      });
+    }
+  };
+
+  const handleViewOnMap = (loc: "dream-park" | "harit-vihar") => {
+    setActiveLocation(loc);
+    document.getElementById("plots")?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
@@ -118,7 +141,13 @@ export default function Home() {
       setTimeout(() => {
         setFormStatus("idle");
         setIsEnquiryModalOpen(false);
-        setFormData({ name: "", phone: "", email: "", message: "", plot_interest: "" });
+        setFormData({
+          name: "",
+          phone: "",
+          email: "",
+          message: "",
+          plot_interest: "",
+        });
       }, 2000);
     } catch (err) {
       console.error("Lead capture failed:", err);
@@ -129,24 +158,41 @@ export default function Home() {
     }
   };
 
-  const handlePlotSelect = useCallback((id: string, sqft: number) => {
-    setSelectedPlot({ id, sqft, status: "available" });
-  }, []);
+  const handlePlotSelect = useCallback(
+    (id: string, sqft: number, locationName: string) => {
+      setSelectedPlot({ id, sqft, status: "available", locationName });
+    },
+    [],
+  );
 
-  const handlePlotEnquire = (plotId: string) => {
-    setFormData((prev) => ({ ...prev, plot_interest: plotId }));
+  const handlePlotEnquire = (plotId: string, locationName?: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      plot_interest: `${plotId} (${locationName || (activeLocation === "harit-vihar" ? "Harit Vihar" : "Dream Park")})`,
+    }));
     setIsEnquiryModalOpen(true);
     setSelectedPlot(null);
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900 selection:bg-emerald-200">
-      <Header onEnquireClick={() => setIsEnquiryModalOpen(true)} />
+      <Header
+        onEnquireClick={() => setIsEnquiryModalOpen(true)}
+        onSelectLocation={(loc) => {
+          setActiveLocation(loc);
+          setSearchLocation(loc);
+        }}
+      />
 
       <main>
         <Hero onEnquireClick={() => setIsEnquiryModalOpen(true)} />
 
         <QuickFind
+          searchLocation={searchLocation}
+          setSearchLocation={(loc) => {
+            setSearchLocation(loc);
+            setSearchResult(null);
+          }}
           searchSqft={searchSqft}
           setSearchSqft={(val) => {
             setSearchSqft(val);
@@ -154,6 +200,7 @@ export default function Home() {
           }}
           searchResult={searchResult}
           handleSearch={handleSearch}
+          onViewOnMap={handleViewOnMap}
           setIsEnquiryModalOpen={() => setIsEnquiryModalOpen(true)}
         />
 
@@ -166,16 +213,22 @@ export default function Home() {
         >
           <div className="max-w-[1400px] mx-auto">
             <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100/80 border border-emerald-200 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-4">
+                Interactive Layout & Live Availability
+              </div>
               <h2 className="text-3xl md:text-5xl font-black text-neutral-900 mb-4 tracking-tight">
                 Master Plan & Plot Availability
               </h2>
               <p className="text-neutral-600 max-w-2xl mx-auto text-lg">
-                Explore our real project layout. Select an available plot to
-                send an enquiry.
+                Explore real layouts for Dream Park Bettiah and Harit Vihar Kesariya. Select an available plot to send an enquiry.
               </p>
             </div>
 
-            <PlotMapSVG onSelectPlot={handlePlotSelect} />
+            <PlotMapSVG
+              onSelectPlot={handlePlotSelect}
+              initialLocation={activeLocation}
+              onLocationChange={setActiveLocation}
+            />
           </div>
         </section>
 
@@ -188,6 +241,7 @@ export default function Home() {
           setFormData={setFormData}
           handleLeadSubmit={handleLeadSubmit}
           formStatus={formStatus}
+          activeLocation={activeLocation}
         />
       </main>
 
